@@ -8,10 +8,10 @@ from PIL import Image
 import math
 
 from .degrade import GaussianBlur
-from ..util.dpir.utils_image import single2tensor4
-from ..util.dpir import utils_sisr as sr
-from ..util import transforms
-from ..util.transforms import RadonGenerator, complex2real
+from ..pnp.util.dpir.utils_image import single2tensor4
+from ..pnp.util.dpir import utils_sisr as sr
+from ..pnp.util import transforms
+from ..pnp.util.transforms import RadonGenerator, complex2real
 
 def center_crop(img, target_size):
     # img: [H,W,C]

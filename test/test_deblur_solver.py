@@ -5,7 +5,7 @@ import torch.utils.data
 import torch
 
 from tfpnp.data.dataset import HSIDeblurDataset, dict_to_device
-from tfpnp.util.dpir import utils_pnp as pnp
+from tfpnp.pnp.util.dpir import utils_pnp as pnp
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

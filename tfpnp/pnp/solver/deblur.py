@@ -2,7 +2,7 @@ import torch
 
 from .base import PnPSolver
 from ..denoiser import Denoiser
-from ...util.dpir import utils_sisr as sr
+from ..util.dpir import utils_sisr as sr
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
