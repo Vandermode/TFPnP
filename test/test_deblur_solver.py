@@ -4,7 +4,7 @@ from tfpnp.pnp.solver.deblur import ADMMSolver_Deblur
 import torch.utils.data
 import torch
 
-from tfpnp.data.dataset import HSIDeblurDataset
+from tfpnp.data.dataset import HSIDeblurDataset, dict_to_device
 from tfpnp.util.dpir import utils_pnp as pnp
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -12,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if __name__ == '__main__':
     batch_size = 2
     
-    train_dataset = HSIDeblurDataset('/media/exthdd/datasets/hsi/ECCVData/icvl_512_0', device=device)
+    train_dataset = HSIDeblurDataset('/media/exthdd/datasets/hsi/ECCVData/icvl_512_0')
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
     
     denoiser = GRUNetDenoiser('model/grunet-unet-qrnn3d.pth').to(device)
@@ -20,6 +20,7 @@ if __name__ == '__main__':
     
     iterator = iter(train_loader)
     data = iterator.__next__()
+    data = dict_to_device(data, device)
     
     solver_state = solver.reset(data)
     
