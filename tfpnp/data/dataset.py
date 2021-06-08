@@ -140,11 +140,12 @@ class CSMRIDataset(Dataset):
         x0 = ATy0.clone().detach()
 
         output = complex2real(ATy0.clone().detach())
+        mask = mask.unsqueeze(0).bool()
         dic = {'y0': y0, 'x0': x0, 'ATy0': ATy0, 'gt': target, 'mask': mask, 'sigma_n': sigma_n, 'output': output}
 
         # y0,x0,ATy0, sigma_n: C, W, H, 2
         # gt, output: C, W, H
-        # mask: W, H
+        # mask: 1, W, H
         
         return dic
 

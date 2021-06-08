@@ -33,6 +33,16 @@ class PnPSolver(nn.Module):
         """
         raise NotImplementedError
     
+    def get_output(self, state):
+        """ Get output from intermediate state
+
+        Args:
+            state: a object contains the current internal states of the solver
+            
+        Returns:
+            output: restored image
+        """
+    
     @property
     def parameter_names(self):
         raise NotImplementedError
