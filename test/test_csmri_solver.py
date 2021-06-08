@@ -53,7 +53,8 @@ if __name__ == '__main__':
     sigmas = torch.ones((batch_size, iter_num)).to(device)
     parameters = (rhos, sigmas)
     
-    states = solver.forward(solver_state, parameters, iter_num)
+    inputs = (solver_state, data['y0'], data['mask'])
+    states = solver.forward(inputs, parameters, iter_num)
     x, v, u = states
     
     print(x.shape)
