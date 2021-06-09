@@ -44,3 +44,6 @@ class ADMMSolver_CSMRI(PnPSolver):
         # just return x after convert to real
         # x's shape [B,1,W,H]
         return transforms.complex2real(state[0])
+    
+    def get_additional_input(self, state):
+        return (state['y0'], state['mask'])
