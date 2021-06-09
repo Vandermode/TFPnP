@@ -19,7 +19,7 @@ class ADMMSolver_CSMRI(PnPSolver):
         # mask:  [B,1,W,H] 
         # x,z,u: [B,1,W,H,2]
         
-        (x, z, u), y0, mask = inputs
+        (x, z, u), (y0, mask) = inputs
         mu, sigma_d = parameters
 
         for i in range(iter_num):
