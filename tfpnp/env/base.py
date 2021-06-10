@@ -98,8 +98,9 @@ class PnPEnv(DifferentiableEnv):
         self.cur_step += 1
         
         # perform one step using solver and update state
-        inputs = (self.state['sovler'], self.solver.get_additional_input(self.state))
-        solver_state = self.solver(inputs, action)
+        inputs = (self.state['solver'], self.solver.filter_additional_input(self.state))
+        parameters = self.solver.filter_hyperparameter(action)
+        solver_state = self.solver(inputs, parameters)
         self.state['T'] = torch.ones_like(self.state['T']) * self.cur_step / self.max_step
         self.state['output'] = self.solver.get_output(solver_state)
         self.state['solver'] = solver_state
@@ -130,8 +131,9 @@ class PnPEnv(DifferentiableEnv):
     def forward(self, state, action):
         last_psnr = self._cal_psnr(state['output'], state['gt'])
           
-        inputs = state['solver']
-        solver_state = self.solver(inputs, action)
+        inputs = (state['solver'], self.solver.filter_additional_input(state))
+        parameters = self.solver.filter_hyperparameter(action)
+        solver_state = self.solver(inputs, parameters)
         state['output'] = self.solver.get_output(solver_state)
         state['solver'] = solver_state
         
@@ -143,9 +145,11 @@ class PnPEnv(DifferentiableEnv):
         return ob, reward
     
     
-    def _observation(self):
-        return self.state
-    
+    def _observation(self, state=None):
+        if state is None:
+            return self.state
+        else:
+            return state
     
     def _cal_psnr(self, output, gt):
         N = output.shape[0]

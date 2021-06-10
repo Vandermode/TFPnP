@@ -10,7 +10,8 @@ class CSMRIEnv(PnPEnv):
         super().__init__(data_loader, solver, max_step)
     
     def get_policy_state(self, state):
-        x, z, u = state['solver']
+        variables = state['solver']
+        x, z, u = variables.split(variables.shape[1] // 3, dim=1)
         x = complex2real(x)
         z = complex2real(z)
         u = complex2real(u)

@@ -12,16 +12,22 @@ class ADMMSolver_CSMRI(PnPSolver):
         x = data['x0'].clone().detach() # [B,1,W,H,2]
         z = x.clone().detach()          # [B,1,W,H,2]
         u = torch.zeros_like(x)         # [B,1,W,H,2]
-        return (x,z,u)
+        return torch.cat((x, z, u), dim=1)
 
-    def forward(self, inputs, parameters, iter_num):    
+    def forward(self, inputs, parameters, iter_num=None):    
         # y0:    [B,1,W,H,2]
         # mask:  [B,1,W,H] 
         # x,z,u: [B,1,W,H,2]
         
-        (x, z, u), (y0, mask) = inputs
+        variables, (y0, mask) = inputs
         mu, sigma_d = parameters
 
+        x, z, u = torch.split(variables, variables.shape[1] // 3, dim=1)
+
+        # infer iter_num from provided hyperparameters
+        if iter_num is None:
+            iter_num = mu.shape[-1]
+        
         for i in range(iter_num):
             # x step
             x = transforms.real2complex(self.denoiser.denoise(transforms.complex2real(z - u), sigma_d[:, i]))  # plug-and-play proximal mapping
@@ -38,12 +44,16 @@ class ADMMSolver_CSMRI(PnPSolver):
             # u step
             u = u + x - z
         
-        return x, z, u
+        return torch.cat((x, z, u), dim=1)
     
     def get_output(self, state):
         # just return x after convert to real
         # x's shape [B,1,W,H]
-        return transforms.complex2real(state[0])
+        x, _, _ = torch.split(state, state.shape[1] // 3, dim=1)
+        return transforms.complex2real(x)
     
-    def get_additional_input(self, state):
+    def filter_additional_input(self, state):
         return (state['y0'], state['mask'])
+    
+    def filter_hyperparameter(self, action):
+        return action['mu'], action['sigma_d']
