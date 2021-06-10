@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     env = CSMRIEnv(train_loader, solver, max_step=6)
     
-    policy_network = ResNetActor(6+3, 5).to(device)
+    policy_network = ResNetActor(6+3, opt.action_pack).to(device)
     critic = ResNet_wobn(9, 18, 1).to(device)
     critic_target = ResNet_wobn(9, 18, 1) .to(device)
     

@@ -35,7 +35,7 @@ class Env:
         raise NotImplementedError
 
 
-class DifferentiableEnv(Env, nn.Module):
+class DifferentiableEnv(Env):
     def forward(self, state, action):
         raise NotImplementedError
        
@@ -98,20 +98,21 @@ class PnPEnv(DifferentiableEnv):
         self.cur_step += 1
         
         # perform one step using solver and update state
-        inputs = (self.state['solver'], self.solver.filter_additional_input(self.state))
-        parameters = self.solver.filter_hyperparameter(action)
-        solver_state = self.solver(inputs, parameters)
-        self.state['T'] = torch.ones_like(self.state['T']) * self.cur_step / self.max_step
-        self.state['output'] = self.solver.get_output(solver_state)
-        self.state['solver'] = solver_state
-        
+        with torch.no_grad():
+            inputs = (self.state['solver'], self.solver.filter_additional_input(self.state))
+            parameters = self.solver.filter_hyperparameter(action)
+            solver_state = self.solver(inputs, parameters)
+            self.state['T'] = torch.ones_like(self.state['T']) * self.cur_step / self.max_step
+            self.state['output'] = self.solver.get_output(solver_state)
+            self.state['solver'] = solver_state
+            
         # compute reward
         psnr = self._cal_psnr(self.state['output'], self.state['gt'])
         reward = (psnr - self.last_psnr)
         
         # update idx of items that should be left to be process
         idx_stop = action['idx_stop'] 
-        self.idx_left = self.idx_left[idx_stop == 0]
+        self.idx_left = torch.arange(0, self.state['output'].shape[0])[idx_stop == 0]
         all_done = len(self.idx_left) == 0
         if self.cur_step == self.max_step:
             all_done = True
@@ -152,6 +153,9 @@ class PnPEnv(DifferentiableEnv):
             return state
     
     def _cal_psnr(self, output, gt):
+        output = output.clone().detach()
+        gt = gt.clone().detach()
+        
         N = output.shape[0]
         output = torch.clamp(output, 0, 1)
         mse = torch.mean(F.mse_loss(output.view(N, -1), gt.view(N, -1), reduction='none'), dim=1)

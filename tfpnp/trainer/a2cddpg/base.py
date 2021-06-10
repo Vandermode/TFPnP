@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.optim.adam import Adam
 from tensorboardX.writer import SummaryWriter
 
-from ...util.misc import prRed, prBlack, soft_update
+from ...util.misc import prRed, prBlack, soft_update, hard_update
 from ...env.base import PnPEnv
 from ...util.rpm import ReplayMemory
 
@@ -13,8 +13,6 @@ from ...util.rpm import ReplayMemory
 https://www.jianshu.com/p/f9e7140ce19d
 """
 
-Transition = namedtuple('Transition', ['state', 'action', 'reward', 'state2', 
-                                       'action_log_prob', 'dist_entroy'])
 
 def lr_scheduler(step):
     if step < 10000:
@@ -32,7 +30,8 @@ class A2CDDPGTrainer:
         self.critic_target = critic_target
         self.evaluator = evaluator
         self.writer = writer
-
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
         self.total_steps = opt.epochs * opt.steps_per_epoch
 
         self.buffer = ReplayMemory(opt.rmsize * opt.max_step)
@@ -45,7 +44,8 @@ class A2CDDPGTrainer:
         self.optimizer_critic = Adam(self.critic.parameters())
         
         self.criterion = nn.MSELoss()   # criterion for value loss
-            
+        
+        hard_update(self.critic_target, self.critic)
               
     def train(self):
         # get initial observation
@@ -56,20 +56,24 @@ class A2CDDPGTrainer:
         for step in range(self.total_steps):
             # select a action
             # TODO: 1. sample from action space at the first few steps for better exploration. 2. Noise action
-            action, action_log_prob, dist_entropy = self.actor(self.env.get_policy_state(ob))
+            action, _, _ = self.actor(self.env.get_policy_state(ob))
             
             # step the env
-            ob2, ob2_filtered, reward, done, _ = self.env.step(action)
+            _, ob2_filtered, _, done, _ = self.env.step(action)
             episode_step += 1
             
             # store experience to replay buffer: in a2cddpg, we only need ob actually
-            self.buffer.store(Transition(ob, action, reward, ob2, action_log_prob, dist_entropy))
-
+            ob_detached = {k: v.clone().detach().cpu() for k, v in ob.items()} # crucial to prevent out of gpu memory
+            for i in range(list(ob_detached.values())[0].shape[0]):
+                single_sample = {k: v[i:i+1,...] for k, v in ob.items()}
+                self.buffer.store(single_sample)
+                
             ob = ob2_filtered
             
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
-                self.updaet_policy(episode, step)
+                if step > self.opt.warmup:
+                    self.updaet_policy(episode, step)
                 
                 ob = self.env.reset()
                 episode += 1
@@ -94,7 +98,7 @@ class A2CDDPGTrainer:
         
         for _ in range(self.opt.episode_train_times):
             samples = self.buffer.sample_batch(self.opt.env_batch)
-            Q, value_loss, dist_entropy = self.update(transitions=samples, lr=lr)
+            Q, value_loss, dist_entropy = self.update(samples=samples, lr=lr)
             
             tot_Q += Q
             tot_value_loss += value_loss
@@ -115,7 +119,7 @@ class A2CDDPGTrainer:
             .format(episode, step, mean_Q, mean_dist_entropy, mean_value_loss))
     
     
-    def update(self, transitions, lr:dict):
+    def update(self, samples, lr:dict):
         # update learning rate
         for param_group in self.optimizer_actor.param_groups:
             param_group['lr'] = lr['actor']
@@ -123,13 +127,13 @@ class A2CDDPGTrainer:
             param_group['lr'] = lr['critic']
             
         # convert list of named tuple into named tuple of batch
-        state = self.convert2batch(transitions)        
-        
+        state = self.convert2batch(samples)        
+       
         policy_state = self.env.get_policy_state(state)
         eval_state = self.env.get_eval_state(state)
         
         action, action_log_prob, dist_entropy = self.actor(policy_state)
-        state2, reward = self.env(state, action)
+        state2, reward = self.env.forward(state, action)
         
         reward -= self.opt.loop_penalty
         eval_state2 = self.env.get_eval_state(state2)
@@ -138,7 +142,7 @@ class A2CDDPGTrainer:
         V_cur = self.critic(eval_state)
         with torch.no_grad():
             V_next_target = self.critic_target(eval_state2)
-            V_next_target = self.opt.discount * (1 - action['idx_stop'].float()) * V_next_target
+            V_next_target = (self.opt.discount * (1 - action['idx_stop'].float())).unsqueeze(-1) * V_next_target
             Q_target = V_next_target + reward 
         advantage = (Q_target - V_cur).clone().detach()
         a2c_loss = action_log_prob * advantage
@@ -166,8 +170,7 @@ class A2CDDPGTrainer:
         
         return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item()
 
-    def convert2batch(self, transitions):
-        states = [t.state for t in transitions]
+    def convert2batch(self, states):
         batch = {}
         for s in states:
             for k, v in s.items():
@@ -175,7 +178,7 @@ class A2CDDPGTrainer:
                     batch[k] = []
                 batch[k].append(v)
         for k, v in batch.items():
-            batch[k] = torch.cat(v, dim=0)
+            batch[k] = torch.cat(v, dim=0).detach().to(self.device)
         return batch
         
     def save_model(self):
