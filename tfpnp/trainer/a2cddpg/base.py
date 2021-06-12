@@ -46,7 +46,14 @@ class A2CDDPGTrainer:
         self.criterion = nn.MSELoss()   # criterion for value loss
         
         hard_update(self.critic_target, self.critic)
-              
+    
+    def select_action(self, state, idx_stop=None, test=False):
+        self.actor.eval()
+        with torch.no_grad():
+            action, _, _ = self.actor(state, idx_stop, not test)
+            self.actor.train()
+            return action
+      
     def train(self):
         # get initial observation
         ob = self.env.reset()
@@ -56,7 +63,7 @@ class A2CDDPGTrainer:
         for step in range(self.total_steps):
             # select a action
             # TODO: 1. sample from action space at the first few steps for better exploration. 2. Noise action
-            action, _, _ = self.actor(self.env.get_policy_state(ob))
+            action = self.select_action(self.env.get_policy_state(ob))
             
             # step the env
             _, ob2_filtered, _, done, _ = self.env.step(action)
@@ -67,11 +74,14 @@ class A2CDDPGTrainer:
             for i in range(list(ob_detached.values())[0].shape[0]):
                 single_sample = {k: v[i:i+1,...] for k, v in ob.items()}
                 self.buffer.store(single_sample)
-                
+            
             ob = ob2_filtered
             
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
+                if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
+                    self.evaluator(self.env, self.actor.select_action, step, self.opt.loop_penalty)
+                
                 if step > self.opt.warmup:
                     self.updaet_policy(episode, step)
                 
@@ -83,9 +93,6 @@ class A2CDDPGTrainer:
             if (step + 1) % self.opt.steps_per_epoch == 0:
                 epoch = (step+1) // self.opt.steps_per_epoch
                 epoch += 1
-                
-                # if self.evaluator is not None:
-                #     self.evaluator(env, agent.select_action, step, opt.loop_penalty)
 
                 if (epoch % self.opt.save_freq == 0) or (epoch == self.opt.epochs):
                     prRed('Saving model at Step_{:07d}...'.format(step))
@@ -153,7 +160,7 @@ class A2CDDPGTrainer:
         
         entroy_regularization = dist_entropy
         
-        policy_loss = - (a2c_loss + ddpg_loss + entroy_regularization).mean()
+        policy_loss = - (a2c_loss + ddpg_loss + self.opt.lambda_e * entroy_regularization).mean()
         value_loss = self.criterion(Q_target, V_cur)
         
         # perform one step gradient descent

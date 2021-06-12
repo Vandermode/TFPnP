@@ -4,6 +4,7 @@ import cv2
 import torch
 import socket
 import os
+
 from tensorboardX import SummaryWriter
 from scipy.io import loadmat
 
@@ -16,12 +17,13 @@ from tfpnp.pnp.solver.csmri import ADMMSolver_CSMRI
 from tfpnp.pnp.denoiser import UNetDenoiser2D
 from tfpnp.policy.resnet import ResNetActor
 from tfpnp.trainer.a2cddpg.critic import ResNet_wobn
+from tfpnp.trainer.evaluator import Evaluator
 
 torch.autograd.set_detect_anomaly(True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def get_dataloaders(train_dir, mri_dir, mask_dir):
+def get_dataloaders(train_dir, mri_dir, mask_dir, opt):
     sigma_ns = [5, 10, 15]
     noise_model = GaussianModelD(sigma_ns)
 
@@ -34,8 +36,8 @@ def get_dataloaders(train_dir, mri_dir, mask_dir):
     val_datasets = [CSMRIEvalDataset(val_root, fns=None) for val_root in val_roots]
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=opt.env_batch, shuffle=True,
-        num_workers=0 if opt.debug else 4, pin_memory=True, drop_last=True)
+        train_dataset, batch_size=opt.env_batch, shuffle=False,
+        num_workers=0, pin_memory=True, drop_last=True)
 
     val_loaders = [torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False,
@@ -62,18 +64,19 @@ if __name__ == "__main__":
 
     writer = SummaryWriter('./train_log/{}'.format(opt.exp))
 
-    train_loader, val_loaders, val_names = get_dataloaders(train_dir, mri_dir, mask_dir)
-    
-    denoiser = UNetDenoiser2D('model/unet-nm.pt').to(device)
-    solver = ADMMSolver_CSMRI(denoiser)
+    train_loader, val_loaders, val_names = get_dataloaders(train_dir, mri_dir, mask_dir, opt)
 
-    env = CSMRIEnv(train_loader, solver, max_step=6)
-    
     policy_network = ResNetActor(6+3, opt.action_pack).to(device)
     critic = ResNet_wobn(9, 18, 1).to(device)
     critic_target = ResNet_wobn(9, 18, 1) .to(device)
     
+    denoiser = UNetDenoiser2D('model/unet-nm.pt').to(device)
+    solver = ADMMSolver_CSMRI(denoiser)
+    env = CSMRIEnv(train_loader, solver, max_step=6)
+    evaluator = Evaluator(opt, val_loaders, val_names, writer)
+    
     trainer = A2CDDPGTrainer(opt, env, policy_network=policy_network, 
-                             critic=critic, critic_target=critic_target, writer=writer)
+                             critic=critic, critic_target=critic_target, 
+                             evaluator=evaluator, writer=writer)
     
     trainer.train()

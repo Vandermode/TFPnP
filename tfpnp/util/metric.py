@@ -17,8 +17,6 @@ def MSIQA(X, Y):
     return psnr, ssim, sam
 
 def pnsr_qrnn3d(X, Y):
-    X = X.transpose(2,0,1)
-    Y = Y.transpose(2,0,1)
     return np.mean(cal_bwpsnr(X, Y))
 
 def ssim_qrnn3d(X, Y):

@@ -141,7 +141,7 @@ class CSMRIDataset(Dataset):
 
         output = complex2real(ATy0.clone().detach())
         mask = mask.unsqueeze(0).bool()
-        dic = {'y0': y0, 'x0': x0, 'ATy0': ATy0, 'gt': target, 'mask': mask, 'sigma_n': sigma_n, 'output': output}
+        dic = {'y0': y0, 'x0': x0, 'ATy0': ATy0, 'gt': target, 'mask': mask, 'sigma_n': sigma_n, 'output': output, 'input': x0}
 
         # y0,x0,ATy0, sigma_n: C, W, H, 2
         # gt, output: C, W, H
@@ -169,7 +169,10 @@ class CSMRIEvalDataset(Dataset):
         mat.pop('__globals__', None)
         mat.pop('__header__', None)
         mat.pop('__version__', None)
-
+        mat['output'] = complex2real(mat['ATy0'])
+        mat['input'] = mat['x0']
+        mat['mask'] = np.expand_dims(mat['mask'], axis=0).astype('bool')
+        
         return mat
         
     def __len__(self):

@@ -116,8 +116,8 @@ class ResNetActor(nn.Module):
     # ADMM and HQS
     def __init__(self, num_inputs, action_bundle):
         super(ResNetActor, self).__init__() 
-        self.conv = nn.Conv2d(num_inputs, out_channels=10, kernel_size=1)               
-        self.actor_encoder = ResNetEncoder(10, 18)
+        # self.conv = nn.Conv2d(num_inputs, out_channels=10, kernel_size=1)               
+        self.actor_encoder = ResNetEncoder(num_inputs, 18)
 
         self.fc_softmax = nn.Sequential(*[
             nn.Linear(512, 2),
@@ -131,8 +131,8 @@ class ResNetActor(nn.Module):
 
     def forward(self, state, idx_stop=None, stochastic=True):
         action = {}
-        x = self.conv(state)
-        x = self.actor_encoder(x)
+        # x = self.conv(state)
+        x = self.actor_encoder(state)
 
         x = F.avg_pool2d(x, 4)
         x = x.view(x.size(0), -1)

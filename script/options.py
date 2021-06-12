@@ -61,6 +61,8 @@ class TrainOptions:
         
         self.parser.add_argument('--epochs', default=10, type=int, help='number of epochs for training')
         self.parser.add_argument('--steps_per_epoch', default=100, type=int, help='number of steps per epoch')
+        self.parser.add_argument('--save_freq', default=1000, type=int, help='number of steps per epoch')
+        self.parser.add_argument('--eval_per_episode', default=10, type=int, help='number of steps per epoch')
         
         self.parser.add_argument('--episode_train_times', default=10, type=int, help='train times for each episode')    
         self.parser.add_argument('--resume', '-r', default=None, type=str, help='Resuming model path')
