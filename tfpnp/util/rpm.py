@@ -22,8 +22,13 @@ class ReplayMemory:
 
     def sample_batch(self, env_batch):
         if self.size() < env_batch:
-            batch = random.sample(self.buffer, self.size())
+            index_value = random.sample(list(enumerate(self.buffer)), self.size())
         else:
-            batch = random.sample(self.buffer, env_batch)
-            
-        return batch
+            index_value = random.sample(list(enumerate(self.buffer)), env_batch)
+        indexes = []
+        values = []
+        for idx, val in index_value:
+            indexes.append(idx)
+            values.append(val)
+        print(indexes)
+        return values

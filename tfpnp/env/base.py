@@ -1,11 +1,12 @@
 import torch
+from torch.nn import parameter
 import torch.nn.functional as F
-import torch.nn as nn
 import numpy as np
+from copy import deepcopy
 
 from ..data.dataset import dict_to_device
 from ..util.misc import to_numpy
-from ..pnp.util.transforms import complex2real
+from ..pnp.util.transforms import complex2real, ifft2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -94,9 +95,9 @@ class PnPEnv(DifferentiableEnv):
         data.update({'solver': solver_state})
         self.state = data
         
-        self.idx_left = torch.arange(0, B)
+        self.idx_left = torch.arange(0, B).to(device)
         
-        return self._observation()
+        return deepcopy(self._observation())
     
     def step(self, action):
         self.cur_step += 1
@@ -106,7 +107,7 @@ class PnPEnv(DifferentiableEnv):
             inputs = (self.state['solver'], self.solver.filter_additional_input(self.state))
             parameters = self.solver.filter_hyperparameter(action)
             solver_state = self.solver(inputs, parameters)
-            self.state['T'] = torch.ones_like(self.state['T']) * self.cur_step / self.max_step
+            self.state['T'] = torch.ones_like(self.state['T'], dtype=torch.float32) * self.cur_step / self.max_step
             self.state['output'] = self.solver.get_output(solver_state)
             self.state['solver'] = solver_state
             
@@ -130,26 +131,21 @@ class PnPEnv(DifferentiableEnv):
         
         self.last_psnr = psnr[self.idx_left, ...]
         
-        return ob, ob_masked, reward, all_done, {'done': done}
+        return deepcopy(ob), deepcopy(ob_masked), reward, all_done, {'done': done}
     
     
-    def forward(self, state, action):
-        last_psnr = torch_psnr(state['output'], state['gt'])
-          
-        inputs = (state['solver'], self.solver.filter_additional_input(state))
+    def forward(self, inputs, output, gt, action):
+        last_psnr = torch_psnr(output, gt)
+
         parameters = self.solver.filter_hyperparameter(action)
         solver_state = self.solver(inputs, parameters)
-        state['output'] = self.solver.get_output(solver_state)
-        state['solver'] = solver_state
-        
+        output2 = self.solver.get_output(solver_state)
+
         # compute reward
-        psnr = torch_psnr(state['output'], state['gt'])
+        psnr = torch_psnr(output2, gt)
         reward = (psnr - last_psnr)
-        
-        state['T'] = state['T'] + 1/self.max_step
-        
-        ob = self._observation(state)
-        return ob, reward
+    
+        return solver_state, reward
     
     def get_images(self, state):
         def _pre_img(img):

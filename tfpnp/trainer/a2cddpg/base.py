@@ -1,4 +1,5 @@
 from collections import namedtuple
+from tfpnp.pnp.util.transforms import complex2channel, complex2real
 
 import torch
 import torch.nn as nn
@@ -51,9 +52,15 @@ class A2CDDPGTrainer:
         self.actor.eval()
         with torch.no_grad():
             action, _, _ = self.actor(state, idx_stop, not test)
-            self.actor.train()
-            return action
-      
+        self.actor.train()
+        return action
+    
+    def save_experience(self, ob):
+        ob_detached = {k: v.clone().detach().cpu() for k, v in ob.items()} # crucial to prevent out of gpu memory
+        for i in range(list(ob_detached.values())[0].shape[0]):
+            single_sample = {k: v[i:i+1,...] for k, v in ob.items()}
+            self.buffer.store(single_sample)
+    
     def train(self):
         # get initial observation
         ob = self.env.reset()
@@ -70,17 +77,14 @@ class A2CDDPGTrainer:
             episode_step += 1
             
             # store experience to replay buffer: in a2cddpg, we only need ob actually
-            ob_detached = {k: v.clone().detach().cpu() for k, v in ob.items()} # crucial to prevent out of gpu memory
-            for i in range(list(ob_detached.values())[0].shape[0]):
-                single_sample = {k: v[i:i+1,...] for k, v in ob.items()}
-                self.buffer.store(single_sample)
+            self.save_experience(ob)
             
             ob = ob2_filtered
             
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
                 if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
-                    self.evaluator(self.env, self.actor.select_action, step, self.opt.loop_penalty)
+                    self.evaluator(self.env, self.select_action, step, self.opt.loop_penalty)
                 
                 if step > self.opt.warmup:
                     self.updaet_policy(episode, step)
@@ -104,6 +108,8 @@ class A2CDDPGTrainer:
         lr = lr_scheduler(step)
         
         for _ in range(self.opt.episode_train_times):
+            import random
+            random.seed(2021)
             samples = self.buffer.sample_batch(self.opt.env_batch)
             Q, value_loss, dist_entropy = self.update(samples=samples, lr=lr)
             
@@ -135,15 +141,38 @@ class A2CDDPGTrainer:
             
         # convert list of named tuple into named tuple of batch
         state = self.convert2batch(samples)        
-       
-        policy_state = self.env.get_policy_state(state)
-        eval_state = self.env.get_eval_state(state)
+        gt = state['gt']
+        output = state['output']
+        variables = state['solver']
+        y0 = state['y0']
+        ATy0 = state['ATy0']
+        mask = state['mask']
+        T = state['T']
+        sigma_n = state['sigma_n']
         
+        policy_state = torch.cat([complex2real(variables), 
+                                  complex2channel(y0),
+                                  complex2real(ATy0),
+                                  mask.float(), 
+                                  T, 
+                                  complex2real(sigma_n)], 1)
+        
+        eval_state = policy_state
+        
+
         action, action_log_prob, dist_entropy = self.actor(policy_state)
-        state2, reward = self.env.forward(state, action)
+        
+        inputs = (variables, (y0, mask))
+        variables2, reward = self.env.forward(inputs, output, gt, action)
         
         reward -= self.opt.loop_penalty
-        eval_state2 = self.env.get_eval_state(state2)
+        
+        eval_state2 = torch.cat([complex2real(variables2), 
+                                  complex2channel(y0),
+                                  complex2real(ATy0),
+                                  mask.float(), 
+                                  T + 1/self.env.max_step, 
+                                  complex2real(sigma_n)], 1)
         
         # compute actor critic loss for discrete action
         V_cur = self.critic(eval_state)
@@ -156,6 +185,7 @@ class A2CDDPGTrainer:
         
         # compute ddpg loss for continuous actions
         V_next = self.critic(eval_state2)
+        V_next = (self.opt.discount * (1 - action['idx_stop'].float())).unsqueeze(-1) * V_next
         ddpg_loss = V_next + reward
         
         entroy_regularization = dist_entropy
@@ -185,7 +215,7 @@ class A2CDDPGTrainer:
                     batch[k] = []
                 batch[k].append(v)
         for k, v in batch.items():
-            batch[k] = torch.cat(v, dim=0).detach().to(self.device)
+            batch[k] = torch.cat(v, dim=0).clone().detach().to(self.device)
         return batch
         
     def save_model(self):

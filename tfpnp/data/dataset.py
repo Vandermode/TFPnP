@@ -101,7 +101,7 @@ class CSMRIDataset(Dataset):
         self.target_size = target_size
 
     def __getitem__(self, index):
-        mask = self.masks[np.random.randint(0, len(self.masks))]
+        mask = self.masks[1]
 
         if BOOL:
             mask = mask.astype(np.bool)
