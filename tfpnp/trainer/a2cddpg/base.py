@@ -37,10 +37,6 @@ class A2CDDPGTrainer:
 
         self.buffer = ReplayMemory(opt.rmsize * opt.max_step)
         
-        # Freeze target networks with respect to optimizers (only update via polyak averaging)
-        for p in self.critic_target.parameters():
-            p.requires_grad = False
-        
         self.optimizer_actor = Adam(self.actor.parameters())
         self.optimizer_critic = Adam(self.critic.parameters())
         
@@ -56,10 +52,9 @@ class A2CDDPGTrainer:
         return action
     
     def save_experience(self, ob):
-        ob_detached = {k: v.clone().detach().cpu() for k, v in ob.items()} # crucial to prevent out of gpu memory
-        for i in range(list(ob_detached.values())[0].shape[0]):
-            single_sample = {k: v[i:i+1,...] for k, v in ob.items()}
-            self.buffer.store(single_sample)
+        ob_detached = ob.clone().detach().cpu() # crucial to prevent out of gpu memory
+        for i in range(ob_detached.shape[0]):
+            self.buffer.store(ob_detached[i])
     
     def train(self):
         # get initial observation
@@ -90,6 +85,8 @@ class A2CDDPGTrainer:
                     self.updaet_policy(episode, step)
                 
                 ob = self.env.reset()
+                # from hdf5storage import savemat
+                # savemat('state.mat', {'ob': ob.detach().cpu().numpy()})
                 episode += 1
                 episode_step = 0
 
@@ -141,37 +138,41 @@ class A2CDDPGTrainer:
             
         # convert list of named tuple into named tuple of batch
         state = self.convert2batch(samples)        
-        gt = state['gt']
-        output = state['output']
-        variables = state['solver']
-        y0 = state['y0']
-        ATy0 = state['ATy0']
-        mask = state['mask']
-        T = state['T']
-        sigma_n = state['sigma_n']
+
+        from hdf5storage import savemat
         
-        policy_state = torch.cat([complex2real(variables), 
-                                  complex2channel(y0),
-                                  complex2real(ATy0),
-                                  mask.float(), 
-                                  T, 
-                                  complex2real(sigma_n)], 1)
+        
+        num_var = 3
+        gt = state[:, 0:1, ...]
+        variables = state[:, 1:num_var+1, ...]
+        y0 = state[:, num_var+1:num_var+2, ...]
+        ATy0 = state[:, num_var+2:num_var+3, ...]
+        mask = state[:, num_var+3:num_var+4, ...]
+        T = state[:, num_var+4:num_var+5, ...]
+        sigma_n = state[:, num_var+5:num_var+6, ...]
+        
+        policy_state = self.env.get_policy_state(state)
         
         eval_state = policy_state
-        
+
+        savemat('ob.mat', {'state':eval_state.detach().cpu().numpy()})
+
 
         action, action_log_prob, dist_entropy = self.actor(policy_state)
         
-        inputs = (variables, (y0, mask))
-        variables2, reward = self.env.forward(inputs, output, gt, action)
+        _mask = complex2real(mask).bool() 
+        inputs = (variables, (y0, _mask))
+        output0 = complex2real(variables[:, 0:1,...])
+        gt_real = complex2real(gt)
+        variables2, reward = self.env.forward(inputs, output0, gt_real, action)
         
         reward -= self.opt.loop_penalty
         
         eval_state2 = torch.cat([complex2real(variables2), 
                                   complex2channel(y0),
                                   complex2real(ATy0),
-                                  mask.float(), 
-                                  T + 1/self.env.max_step, 
+                                  complex2real(mask), 
+                                  complex2real(T) + 1/self.env.max_step, 
                                   complex2real(sigma_n)], 1)
         
         # compute actor critic loss for discrete action
@@ -208,15 +209,7 @@ class A2CDDPGTrainer:
         return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item()
 
     def convert2batch(self, states):
-        batch = {}
-        for s in states:
-            for k, v in s.items():
-                if k not in batch.keys():
-                    batch[k] = []
-                batch[k].append(v)
-        for k, v in batch.items():
-            batch[k] = torch.cat(v, dim=0).clone().detach().to(self.device)
-        return batch
+        return torch.stack(states, dim=0).to(self.device)
         
     def save_model(self):
         pass

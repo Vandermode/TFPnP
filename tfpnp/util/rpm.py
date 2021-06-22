@@ -30,5 +30,5 @@ class ReplayMemory:
         for idx, val in index_value:
             indexes.append(idx)
             values.append(val)
-        print(indexes)
+        # print(indexes)
         return values

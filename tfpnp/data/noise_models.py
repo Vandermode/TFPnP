@@ -32,6 +32,7 @@ class GaussianModelD:  # discrete noise levels
             sigma = self.sigmas[idx]
         else:
             sigma = np.random.choice(self.sigmas)
+        sigma = self.sigmas[0]
 
         sigma = sigma / 255.
         # y = x + np.random.randn(*x.shape).astype(np.float32) * sigma

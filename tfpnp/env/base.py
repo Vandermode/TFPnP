@@ -56,8 +56,8 @@ class PnPEnv(DifferentiableEnv):
         self.cur_step = 0
         
         self.state = None
-        self.last_psnr = 0
-        self.init_psnr = 0
+        self.last_metric = 0
+        self.metric_fn = torch_psnr
     
     def get_policy_state(self, state):
         raise NotImplementedError
@@ -81,57 +81,65 @@ class PnPEnv(DifferentiableEnv):
         
         # get inital solver states
         solver_state = self.solver.reset(data)
+        data.update({'solver': solver_state})
         
         # construct state of time step
         B,_,W,H = data['gt'].shape
-        T = torch.ones([B, 1, W, H], dtype=torch.float32, device=device) 
-        T *= self.cur_step / self.max_step
-        
-        # compute inital pnsr
-        self.last_psnr = self.init_psnr = torch_psnr(data['output'], data['gt'])
-        
-        # concate all states 
+        T = torch.ones([B, 1, W, H, 2], dtype=torch.float32, device=device) * self.cur_step / self.max_step
         data.update({'T': T})
-        data.update({'solver': solver_state})
+
         self.state = data
-        
-        self.idx_left = torch.arange(0, B).to(device)
-        
-        return deepcopy(self._observation())
+        self.idx_left = torch.arange(0, B).to(device)        
+        self.last_metric = self.compute_metric()
+
+        return self._observation()
+    
+    def compute_metric(self):
+        output = self.state['output'].clone().detach()
+        gt = self.state['gt'].clone().detach()
+        return self.metric_fn(output, gt)
+    
+    def compute_reward(self):
+        metric = self.compute_metric()
+        reward = metric - self.last_metric
+        self.last_metric = metric
+        return reward
+    
+    def filter(self, data):
+        return data[self.idx_left, ...]
     
     def step(self, action):
         self.cur_step += 1
         
         # perform one step using solver and update state
         with torch.no_grad():
-            inputs = (self.state['solver'], self.solver.filter_additional_input(self.state))
+            f = self.filter
+            inputs = (f(self.state['solver']), map(f, self.solver.filter_additional_input(self.state)))
             parameters = self.solver.filter_hyperparameter(action)
             solver_state = self.solver(inputs, parameters)
-            self.state['T'] = torch.ones_like(self.state['T'], dtype=torch.float32) * self.cur_step / self.max_step
-            self.state['output'] = self.solver.get_output(solver_state)
-            self.state['solver'] = solver_state
+            self.state['T'] = torch.ones_like(self.state['T']) * self.cur_step / self.max_step
+            self.state['output'][self.idx_left, ...] = self.solver.get_output(solver_state)
+            self.state['solver'][self.idx_left, ...] = solver_state
             
         # compute reward
-        psnr = torch_psnr(self.state['output'], self.state['gt'])
-        reward = (psnr - self.last_psnr)
+        reward = self.compute_reward()
+        
+        ob = self._observation()
         
         # update idx of items that should be left to be process
         idx_stop = action['idx_stop'] 
-        self.idx_left = torch.arange(0, self.state['output'].shape[0])[idx_stop == 0]
+        self.idx_left = self.idx_left[idx_stop == 0]
         all_done = len(self.idx_left) == 0
+        
+        ob_masked = self._observation()
+          
         if self.cur_step == self.max_step:
             all_done = True
             done = torch.ones_like(idx_stop)
         else:
             done = idx_stop.detach()
-
-        ob = self._observation()
-        self.state = {k: v[self.idx_left, ...] for k, v in self.state.items()}
-        ob_masked = self._observation()
         
-        self.last_psnr = psnr[self.idx_left, ...]
-        
-        return deepcopy(ob), deepcopy(ob_masked), reward, all_done, {'done': done}
+        return ob, ob_masked, reward, all_done, {'done': done}
     
     
     def forward(self, inputs, output, gt, action):
@@ -152,25 +160,22 @@ class PnPEnv(DifferentiableEnv):
             img = to_numpy(img[0,...])
             img = np.repeat((np.clip(img, 0, 1) * 255).astype(np.uint8), 3, axis=0)
             return img
-            
-        assert state['gt'].shape[0] == 1  # invoked only in eval mode
 
-        input = _pre_img(complex2real(state['input']))        
-        output = _pre_img(state['output'])
-        gt = _pre_img(state['gt'])
+        input = _pre_img(complex2real(state[:,5:6,...]))        
+        output = _pre_img(complex2real(state[:,1:2,...]))
+        gt = _pre_img(complex2real(state[:,0:1,...]))
 
         return input, output, gt
     
-    def _observation(self, state=None):
-        if state is None:
-            return self.state
-        else:
-            return state
-    
+    # def _observation(self, state=None):
+    #     if state is None:
+    #         s = {k: v[self.idx_left, ...] for k,v in deepcopy(self.state).items()}
+    #         return s
+    #     else:
+    #         return state
+
+
 def torch_psnr(output, gt):
-    output = output.clone().detach()
-    gt = gt.clone().detach()
-    
     N = output.shape[0]
     output = torch.clamp(output, 0, 1)
     mse = torch.mean(F.mse_loss(output.view(N, -1), gt.view(N, -1), reduction='none'), dim=1)

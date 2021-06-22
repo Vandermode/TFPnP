@@ -44,7 +44,7 @@ class Bandwise(object):
         return bwindex
 
 cal_bwssim = Bandwise(compare_ssim)
-cal_bwpsnr = Bandwise(partial(compare_psnr, data_range=1))
+cal_bwpsnr = Bandwise(partial(compare_psnr, data_range=255))
 
 def cal_sam(X, Y, eps=1e-8):
     tmp = (np.sum(X*Y, axis=0) + eps) / (np.sqrt(np.sum(X**2, axis=0)) + eps) / (np.sqrt(np.sum(Y**2, axis=0)) + eps)  

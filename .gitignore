@@ -3,3 +3,4 @@ __pycache__
 model
 data/*
 train_log
+tfpnp_old

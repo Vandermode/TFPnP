@@ -7,6 +7,7 @@ from ..util import transforms
 class ADMMSolver_CSMRI(PnPSolver):
     def __init__(self, denoiser: Denoiser):
         super().__init__(denoiser)
+        self.num_var = 3
         
     def reset(self, data):
         x = data['x0'].clone().detach() # [B,1,W,H,2]
