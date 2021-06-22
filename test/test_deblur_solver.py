@@ -42,14 +42,18 @@ if __name__ == '__main__':
     print(sigmas.shape) # torch.Size([10])
     
     parameters = (rhos, sigmas)
-    states = solver.forward(solver_state, parameters, iter_num)
-    x, v, u = states
+    inputs = (solver_state, (data['FB'], data['FBC'], data['F2B'], data['FBFy']))
+    states = solver.forward(inputs, parameters, iter_num)
+    
+    print(states.shape) # [2,31,512,512] 
+    
+    x = solver.get_output(states)
     
     print(x.shape)
     
     gt = data['gt'].detach().cpu().numpy()[0]
     x = x.detach().cpu().numpy()[0]
     
-    psnr = pnsr_qrnn3d(gt, x)
+    psnr = pnsr_qrnn3d(gt, x, data_range=1)
     
     print(psnr)
