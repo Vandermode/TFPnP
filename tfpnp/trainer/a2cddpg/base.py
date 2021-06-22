@@ -1,4 +1,3 @@
-from collections import namedtuple
 from tfpnp.pnp.util.transforms import complex2channel, complex2real
 
 import torch
@@ -44,18 +43,6 @@ class A2CDDPGTrainer:
         
         hard_update(self.critic_target, self.critic)
     
-    def select_action(self, state, idx_stop=None, test=False):
-        self.actor.eval()
-        with torch.no_grad():
-            action, _, _ = self.actor(state, idx_stop, not test)
-        self.actor.train()
-        return action
-    
-    def save_experience(self, ob):
-        ob_detached = ob.clone().detach().cpu() # crucial to prevent out of gpu memory
-        for i in range(ob_detached.shape[0]):
-            self.buffer.store(ob_detached[i])
-    
     def train(self):
         # get initial observation
         ob = self.env.reset()
@@ -68,13 +55,13 @@ class A2CDDPGTrainer:
             action = self.select_action(self.env.get_policy_state(ob))
             
             # step the env
-            _, ob2_filtered, _, done, _ = self.env.step(action)
+            _, ob2_masked, _, done, _ = self.env.step(action)
             episode_step += 1
             
             # store experience to replay buffer: in a2cddpg, we only need ob actually
             self.save_experience(ob)
             
-            ob = ob2_filtered
+            ob = ob2_masked
             
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
@@ -82,11 +69,9 @@ class A2CDDPGTrainer:
                     self.evaluator(self.env, self.select_action, step, self.opt.loop_penalty)
                 
                 if step > self.opt.warmup:
-                    self.updaet_policy(episode, step)
+                    self._updaet_policy(episode, step)
                 
                 ob = self.env.reset()
-                # from hdf5storage import savemat
-                # savemat('state.mat', {'ob': ob.detach().cpu().numpy()})
                 episode += 1
                 episode_step = 0
 
@@ -100,15 +85,13 @@ class A2CDDPGTrainer:
                     self.save_model(self.opt.save_path, step)
     
     
-    def updaet_policy(self, episode, step):
+    def _updaet_policy(self, episode, step):
         tot_Q, tot_value_loss, tot_dist_entropy = 0, 0, 0
         lr = lr_scheduler(step)
         
         for _ in range(self.opt.episode_train_times):
-            import random
-            random.seed(2021)
             samples = self.buffer.sample_batch(self.opt.env_batch)
-            Q, value_loss, dist_entropy = self.update(samples=samples, lr=lr)
+            Q, value_loss, dist_entropy = self._update(samples=samples, lr=lr)
             
             tot_Q += Q
             tot_value_loss += value_loss
@@ -129,7 +112,7 @@ class A2CDDPGTrainer:
             .format(episode, step, mean_Q, mean_dist_entropy, mean_value_loss))
     
     
-    def update(self, samples, lr:dict):
+    def _update(self, samples, lr:dict):
         # update learning rate
         for param_group in self.optimizer_actor.param_groups:
             param_group['lr'] = lr['actor']
@@ -138,42 +121,16 @@ class A2CDDPGTrainer:
             
         # convert list of named tuple into named tuple of batch
         state = self.convert2batch(samples)        
-
-        from hdf5storage import savemat
-        
-        
-        num_var = 3
-        gt = state[:, 0:1, ...]
-        variables = state[:, 1:num_var+1, ...]
-        y0 = state[:, num_var+1:num_var+2, ...]
-        ATy0 = state[:, num_var+2:num_var+3, ...]
-        mask = state[:, num_var+3:num_var+4, ...]
-        T = state[:, num_var+4:num_var+5, ...]
-        sigma_n = state[:, num_var+5:num_var+6, ...]
         
         policy_state = self.env.get_policy_state(state)
-        
-        eval_state = policy_state
-
-        savemat('ob.mat', {'state':eval_state.detach().cpu().numpy()})
-
 
         action, action_log_prob, dist_entropy = self.actor(policy_state)
-        
-        _mask = complex2real(mask).bool() 
-        inputs = (variables, (y0, _mask))
-        output0 = complex2real(variables[:, 0:1,...])
-        gt_real = complex2real(gt)
-        variables2, reward = self.env.forward(inputs, output0, gt_real, action)
-        
+     
+        state2, reward = self.env.forward(state, action)
         reward -= self.opt.loop_penalty
         
-        eval_state2 = torch.cat([complex2real(variables2), 
-                                  complex2channel(y0),
-                                  complex2real(ATy0),
-                                  complex2real(mask), 
-                                  complex2real(T) + 1/self.env.max_step, 
-                                  complex2real(sigma_n)], 1)
+        eval_state = self.env.get_eval_state(state)
+        eval_state2 = self.env.get_eval_state(state2)
         
         # compute actor critic loss for discrete action
         V_cur = self.critic(eval_state)
@@ -189,6 +146,7 @@ class A2CDDPGTrainer:
         V_next = (self.opt.discount * (1 - action['idx_stop'].float())).unsqueeze(-1) * V_next
         ddpg_loss = V_next + reward
         
+        # compute entroy regularization
         entroy_regularization = dist_entropy
         
         policy_loss = - (a2c_loss + ddpg_loss + self.opt.lambda_e * entroy_regularization).mean()
@@ -208,6 +166,18 @@ class A2CDDPGTrainer:
         
         return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item()
 
+    def select_action(self, state, idx_stop=None, test=False):
+        self.actor.eval()
+        with torch.no_grad():
+            action, _, _ = self.actor(state, idx_stop, not test)
+        self.actor.train()
+        return action
+    
+    def save_experience(self, ob):
+        ob_detached = ob.clone().detach().cpu() # crucial to prevent out of gpu memory
+        for i in range(ob_detached.shape[0]):
+            self.buffer.store(ob_detached[i])
+            
     def convert2batch(self, states):
         return torch.stack(states, dim=0).to(self.device)
         
