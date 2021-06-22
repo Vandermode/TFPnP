@@ -42,7 +42,8 @@ class PnPSolver(nn.Module):
         Returns:
             output: restored image
         """
+        raise NotImplementedError
     
     @property
-    def parameter_names(self):
+    def num_var(self):
         raise NotImplementedError
