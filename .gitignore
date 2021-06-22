@@ -4,3 +4,4 @@ model
 data/*
 train_log
 tfpnp_old
+.idea
