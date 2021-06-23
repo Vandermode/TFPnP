@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
-from tfpnp.trainer.a2cddpg.base import A2CDDPGTrainer
-import cv2
-import torch
-import socket
 import os
-
+import torch
 from tensorboardX import SummaryWriter
 from scipy.io import loadmat
 
-from script.options import TrainOptions
+from options import TrainOptions
+from env import CSMRIEnv
+from dataset import CSMRIDataset, CSMRIEvalDataset
 
-from tfpnp.env.csmri import CSMRIEnv
-from tfpnp.data.dataset import CSMRIDataset, CSMRIEvalDataset
 from tfpnp.data.noise_models import GaussianModelD
 from tfpnp.pnp.solver.csmri import ADMMSolver_CSMRI
 from tfpnp.pnp.denoiser import UNetDenoiser2D
 from tfpnp.policy.resnet import ResNetActor
+from tfpnp.trainer import A2CDDPGTrainer
 from tfpnp.trainer.a2cddpg.critic import ResNet_wobn
 from tfpnp.trainer.evaluator import Evaluator
 
@@ -70,7 +67,7 @@ if __name__ == "__main__":
     critic = ResNet_wobn(9, 18, 1).to(device)
     critic_target = ResNet_wobn(9, 18, 1) .to(device)
     
-    denoiser = UNetDenoiser2D('model/unet-nm.pt').to(device)
+    denoiser = UNetDenoiser2D().to(device)
     solver = ADMMSolver_CSMRI(denoiser)
     env = CSMRIEnv(train_loader, solver, max_step=6)
     evaluator = Evaluator(opt, val_loaders, val_names, writer)

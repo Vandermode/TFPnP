@@ -1,7 +1,9 @@
 __pycache__
 .vscode
 model
-data/*
+examples/csmri/data/*
 train_log
 tfpnp_old
 .idea
+checkpoints
+tfpnp/pnp/denoiser/pretrained

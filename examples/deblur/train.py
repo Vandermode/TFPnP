@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
-from tfpnp.trainer import A2CDDPGTrainer
 import torch
+import torch.utils.data
+
 from tensorboardX import SummaryWriter
 
-from script.options import TrainOptions
+from options import TrainOptions
+from evaluator import EvaluatorDeblur
 
 from tfpnp.env.deblur import DeblurEnv
 from tfpnp.data.dataset import HSIDeblurDataset
@@ -11,7 +12,7 @@ from tfpnp.pnp.solver.deblur import ADMMSolver_Deblur
 from tfpnp.pnp.denoiser import GRUNetDenoiser
 from tfpnp.policy.resnet import ResNetActor_HSI
 from tfpnp.trainer.a2cddpg.critic import ResNet_wobn
-from tfpnp.trainer.evaluator_deblur import EvaluatorDeblur
+from tfpnp.trainer import A2CDDPGTrainer
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -51,7 +52,7 @@ if __name__ == "__main__":
     critic = ResNet_wobn(189, 18, 1).to(device)
     critic_target = ResNet_wobn(189, 18, 1) .to(device)
     
-    denoiser = GRUNetDenoiser('model/grunet-unet-qrnn3d.pth').to(device)
+    denoiser = GRUNetDenoiser().to(device)
     solver = ADMMSolver_Deblur(denoiser)
     
     env = DeblurEnv(train_loader, solver, max_step=6)

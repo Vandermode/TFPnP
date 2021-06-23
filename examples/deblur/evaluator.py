@@ -7,8 +7,8 @@ import os
 from os.path import join
 from scipy.io import savemat
 
-from ..util.misc import AverageMeters, to_numpy, prRed
-from ..pnp.util.dpir import utils_pnp as pnp
+from tfpnp.util.misc import AverageMeters, to_numpy, prRed
+from tfpnp.pnp.util.dpir import utils_pnp as pnp
 
 plt.switch_backend('agg')
 

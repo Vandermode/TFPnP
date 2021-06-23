@@ -82,7 +82,7 @@ class A2CDDPGTrainer:
 
                 if (epoch % self.opt.save_freq == 0) or (epoch == self.opt.epochs):
                     prRed('Saving model at Step_{:07d}...'.format(step))
-                    self.save_model(self.opt.save_path, step)
+                    self.save_model(self.opt.output, step)
     
     
     def _updaet_policy(self, episode, step):
@@ -181,8 +181,13 @@ class A2CDDPGTrainer:
     def convert2batch(self, states):
         return torch.stack(states, dim=0).to(self.device)
         
-    def save_model(self):
-        pass
+    def save_model(self, path, step):
+        if step is None:
+            torch.save(self.actor.state_dict(),'{}/actor.pkl'.format(path))
+            torch.save(self.critic.state_dict(),'{}/critic.pkl'.format(path))
+        else:
+            torch.save(self.actor.state_dict(),'{}/actor_{:07d}.pkl'.format(path, step))
+            torch.save(self.critic.state_dict(),'{}/critic_{:07d}.pkl'.format(path, step))    
     
     def load_model(self):
         pass

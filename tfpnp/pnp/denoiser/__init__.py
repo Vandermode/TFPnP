@@ -1,6 +1,9 @@
+import os
 import torch
 
 from .models.unet import UNet
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class Denoiser:
     def denoise(self, x, sigma):
@@ -22,7 +25,10 @@ class Denoiser:
 
 
 class UNetDenoiser2D(Denoiser):
-    def __init__(self, ckpt_path):
+    def __init__(self, ckpt_path=None):
+        if ckpt_path is None:
+            ckpt_path = os.path.join(CURRENT_DIR, 'pretrained', 'unet-nm.pt')
+            
         net = UNet(2, 1)
         net.load_state_dict(torch.load(ckpt_path))
         net.eval()
@@ -48,7 +54,10 @@ class UNetDenoiser2D(Denoiser):
     
 
 class GRUNetDenoiser:
-    def __init__(self, model_path):
+    def __init__(self, model_path=None):
+        if model_path is None:
+            model_path = os.path.join(CURRENT_DIR, 'pretrained', 'grunet-unet-qrnn3d.pth')
+            
         from .models.qrnn3d import unet_masked_nobn
         model = unet_masked_nobn()
         checkpoint = torch.load(model_path)
