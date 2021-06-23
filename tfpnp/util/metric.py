@@ -1,5 +1,5 @@
 import numpy as np
-from skimage.measure import compare_ssim, compare_psnr
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 from functools import partial
 
 
@@ -17,7 +17,7 @@ def MSIQA(X, Y):
     return psnr, ssim, sam
 
 def pnsr_qrnn3d(X, Y, data_range=255):
-    cal_bwpsnr = Bandwise(partial(compare_psnr, data_range=data_range))
+    cal_bwpsnr = Bandwise(partial(peak_signal_noise_ratio, data_range=data_range))
     return np.mean(cal_bwpsnr(X, Y))
 
 def ssim_qrnn3d(X, Y):
@@ -44,8 +44,8 @@ class Bandwise(object):
             bwindex.append(index)
         return bwindex
 
-cal_bwssim = Bandwise(compare_ssim)
-cal_bwpsnr = Bandwise(partial(compare_psnr, data_range=255))
+cal_bwssim = Bandwise(structural_similarity)
+cal_bwpsnr = Bandwise(partial(peak_signal_noise_ratio, data_range=255))
 
 def cal_sam(X, Y, eps=1e-8):
     tmp = (np.sum(X*Y, axis=0) + eps) / (np.sqrt(np.sum(X**2, axis=0)) + eps) / (np.sqrt(np.sum(Y**2, axis=0)) + eps)  
