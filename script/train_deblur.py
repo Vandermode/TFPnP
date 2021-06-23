@@ -11,7 +11,7 @@ from tfpnp.pnp.solver.deblur import ADMMSolver_Deblur
 from tfpnp.pnp.denoiser import GRUNetDenoiser
 from tfpnp.policy.resnet import ResNetActor_HSI
 from tfpnp.trainer.a2cddpg.critic import ResNet_wobn
-from tfpnp.trainer.evaluator import Evaluator
+from tfpnp.trainer.evaluator_deblur import EvaluatorDeblur
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     solver = ADMMSolver_Deblur(denoiser)
     
     env = DeblurEnv(train_loader, solver, max_step=6)
-    evaluator = Evaluator(opt, val_loaders, val_names, writer)
+    evaluator = EvaluatorDeblur(opt, val_loaders, val_names, writer)
     
     trainer = A2CDDPGTrainer(opt, env, policy_network=policy_network, 
                              critic=critic, critic_target=critic_target, 
