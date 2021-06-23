@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from functools import partial
+from tfpnp.util.metric import pnsr_qrnn3d
 from tfpnp.trainer.a2cddpg.base import A2CDDPGTrainer
 import cv2
 import torch
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     solver = ADMMSolver_Deblur(denoiser)
     
     env = DeblurEnv(train_loader, solver, max_step=6)
-    evaluator = Evaluator(opt, val_loaders, val_names, writer)
+    evaluator = Evaluator(opt, val_loaders, val_names, writer, psnr_fn=partial(pnsr_qrnn3d, data_range=1))
     
     trainer = A2CDDPGTrainer(opt, env, policy_network=policy_network, 
                              critic=critic, critic_target=critic_target, 

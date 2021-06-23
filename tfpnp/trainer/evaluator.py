@@ -13,7 +13,7 @@ plt.switch_backend('agg')
 
 
 class Evaluator(object):
-    def __init__(self, opt, val_loaders, names, writer, keys=None, savedir=None):  
+    def __init__(self, opt, val_loaders, names, writer, psnr_fn=pnsr_qrnn3d, keys=None, savedir=None):  
         self.val_loaders = val_loaders
         self.names = names
         self.max_step = opt.max_step
@@ -22,6 +22,7 @@ class Evaluator(object):
         self.keys = keys or ('sigma_d',)
         self.savedir = savedir
         self.opt = opt
+        self.psnr_fn = psnr_fn
 
     def __call__(self, env, policy, step, loop_penalty=0):        
         # torch.manual_seed(1111)  # fix
@@ -50,7 +51,7 @@ class Evaluator(object):
                 episode_reward = np.zeros(1)            
                 all_done = False
 
-                psnr_input = pnsr_qrnn3d(input, gt, data_range=1)
+                psnr_input = self.psnr_fn(input, gt)
                 sigma_d_seq = []
                 mu_seq = []
                 tau_seq = []
@@ -96,7 +97,7 @@ class Evaluator(object):
                     #     tau_seq.extend(list(to_numpy(action['tau'][0])))
 
                     input, output, gt = env.get_images(ob)
-                    cur_psnr = pnsr_qrnn3d(output, gt, data_range=1)
+                    cur_psnr = self.psnr_fn(output, gt)
                     psnr_seq.append(cur_psnr.item())      
                     reward_seq.append(reward.item())
 
@@ -139,7 +140,7 @@ class Evaluator(object):
                     # self.writer.add_image('{}/lp{:.2f}/{}/_input.png'.format(name, loop_penalty, k), input, step)
                     # self.writer.add_image('{}/lp{:.2f}/{}/_output.png'.format(name, loop_penalty, k), output, step)
 
-                psnr_finished = pnsr_qrnn3d(output, gt)
+                psnr_finished = self.psnr_fn(output, gt)
 
                 avg_meters.update({'acc_reward': episode_reward, 'psnr': psnr_finished, 'iters': episode_steps})
 
