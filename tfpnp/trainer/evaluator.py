@@ -1,13 +1,11 @@
 from tfpnp.util.metric import pnsr_qrnn3d
-import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import PIL.Image as Image
 import os
 from os.path import join
-from scipy.io import savemat
 
-from ..util.misc import AverageMeters, to_numpy, prRed
+from ..util.misc import AverageMeters, prRed
 
 plt.switch_backend('agg')
 
