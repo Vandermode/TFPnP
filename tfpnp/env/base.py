@@ -5,7 +5,6 @@ import numpy as np
 from ..data.dataset import dict_to_device
 from ..util.misc import to_numpy
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Env:
     def reset(self):
@@ -42,10 +41,11 @@ class DifferentiableEnv(Env):
        
 
 class PnPEnv(DifferentiableEnv):
-    def __init__(self, data_loader, solver, max_step):
+    def __init__(self, data_loader, solver, max_step, device):
         super(PnPEnv, self).__init__() 
         self.data_loader = data_loader
         self.data_iterator = iter(data_loader)
+        self.device = device
         
         self.solver = solver
         
@@ -91,7 +91,7 @@ class PnPEnv(DifferentiableEnv):
                 data = self.data_iterator.next()
 
         # move data to device
-        data = dict_to_device(data, device)
+        data = dict_to_device(data, self.device)
         
         # get inital solver states
         solver_state = self.solver.reset(data)
@@ -99,11 +99,11 @@ class PnPEnv(DifferentiableEnv):
         
         # construct state of time step
         B,_,W,H = data['gt'].shape
-        T = torch.ones([B, 1, W, H, 2], dtype=torch.float32, device=device) * self.cur_step / self.max_step
+        T = torch.ones([B, 1, W, H, 2], dtype=torch.float32, device=self.device) * self.cur_step / self.max_step
         data.update({'T': T})
 
         self.state = data
-        self.idx_left = torch.arange(0, B).to(device)        
+        self.idx_left = torch.arange(0, B).to(self.device)        
         self.last_metric = self._compute_metric()
 
         return self._observation()

@@ -54,7 +54,7 @@ class TrainOptions:
         self.parser.add_argument('--rmsize', default=800, type=int, help='replay memory size')
         self.parser.add_argument('--env_batch', default=4, type=int, help='concurrent environment number')
         self.parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
-        self.parser.add_argument('--max_step', default=15, type=int, help='max length for episode')
+        self.parser.add_argument('--max_step', default=6, type=int, help='max length for episode')
         self.parser.add_argument('--noise_factor', default=0, type=float, help='noise level for parameter space noise') # 0.04
         self.parser.add_argument('--validate_interval', default=1, type=int, help='how many episodes to perform a validation')
         self.parser.add_argument('--validate_episodes', default=5, type=int, help='how many episode to perform during validation')
@@ -71,7 +71,7 @@ class TrainOptions:
         self.parser.add_argument('--debug', dest='debug', action='store_true', help='print some info')
         self.parser.add_argument('--seed', default=1234, type=int, help='random seed')
         self.parser.add_argument('--loop_penalty', '-lp', type=float, default=0.05, help='penalty of loop')        
-        self.parser.add_argument('--action_pack', '-ap', type=int, default=5, help='pack of action')
+        self.parser.add_argument('--action_pack', '-ap', type=int, default=1, help='pack of action')
         self.parser.add_argument('--lambda_e', '-le', type=float, default=0.05, help='penalty of loop')
         self.parser.add_argument('--denoiser', type=str, default='unet', help='denoising network')
         self.parser.add_argument('--solver', type=str, default='admm', help='invoked solver')

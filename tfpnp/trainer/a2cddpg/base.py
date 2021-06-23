@@ -19,7 +19,7 @@ def lr_scheduler(step):
         return {'critic': 1e-4, 'actor': 3e-4}
 
 class A2CDDPGTrainer:
-    def __init__(self, opt, env: PnPEnv, policy_network, critic, critic_target,
+    def __init__(self, opt, env: PnPEnv, policy_network, critic, critic_target, device,
                  evaluator=None, writer:SummaryWriter=None):
         self.opt = opt
         self.env = env
@@ -28,7 +28,7 @@ class A2CDDPGTrainer:
         self.critic_target = critic_target
         self.evaluator = evaluator
         self.writer = writer
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device
         
         self.total_steps = opt.epochs * opt.steps_per_epoch
 

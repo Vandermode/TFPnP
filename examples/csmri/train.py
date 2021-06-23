@@ -69,11 +69,11 @@ if __name__ == "__main__":
     
     denoiser = UNetDenoiser2D().to(device)
     solver = ADMMSolver_CSMRI(denoiser)
-    env = CSMRIEnv(train_loader, solver, max_step=6)
+    env = CSMRIEnv(train_loader, solver, max_step=opt.max_step, device=device)
     evaluator = Evaluator(opt, val_loaders, val_names, writer)
     
     trainer = A2CDDPGTrainer(opt, env, policy_network=policy_network, 
                              critic=critic, critic_target=critic_target, 
-                             evaluator=evaluator, writer=writer)
+                             device=device, evaluator=evaluator, writer=writer)
     
     trainer.train()

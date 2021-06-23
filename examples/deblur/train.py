@@ -41,8 +41,6 @@ def lr_scheduler(step):
 if __name__ == "__main__":
     option = TrainOptions()
     opt = option.parse()
-
-    opt.action_pack = 1
     
     writer = SummaryWriter('./train_log/{}'.format(opt.exp))
 
@@ -55,11 +53,11 @@ if __name__ == "__main__":
     denoiser = GRUNetDenoiser().to(device)
     solver = ADMMSolver_Deblur(denoiser)
     
-    env = DeblurEnv(train_loader, solver, max_step=6)
+    env = DeblurEnv(train_loader, solver, max_step=opt.max_step, device=device)
     evaluator = EvaluatorDeblur(opt, val_loaders, val_names, writer)
     
     trainer = A2CDDPGTrainer(opt, env, policy_network=policy_network, 
                              critic=critic, critic_target=critic_target, 
-                             evaluator=evaluator, writer=writer)
+                             device=device, evaluator=evaluator, writer=writer)
     
     trainer.train()

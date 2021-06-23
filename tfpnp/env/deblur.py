@@ -3,8 +3,8 @@ from .base import PnPEnv
 from ..pnp.util.transforms import complex2channel, complex2real, real2complex
 
 class DeblurEnv(PnPEnv):
-    def __init__(self, data_loader, solver, max_step):
-        super().__init__(data_loader, solver, max_step)
+    def __init__(self, data_loader, solver, max_step, device):
+        super().__init__(data_loader, solver, max_step, device)
         
     def get_policy_state(self, state):
         c = 31

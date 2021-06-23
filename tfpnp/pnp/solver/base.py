@@ -1,8 +1,5 @@
-import torch
 import torch.nn as nn
 from ..denoiser import Denoiser
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class PnPSolver(nn.Module):
     def __init__(self, denoiser: Denoiser):

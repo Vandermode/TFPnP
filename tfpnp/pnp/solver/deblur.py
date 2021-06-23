@@ -4,9 +4,6 @@ from .base import PnPSolver
 from ..denoiser import Denoiser
 from ..util.dpir import utils_sisr as sr
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 class ADMMSolver_Deblur(PnPSolver):
     def __init__(self, denoiser: Denoiser):
         super().__init__(denoiser)
