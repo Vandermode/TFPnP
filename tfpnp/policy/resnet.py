@@ -112,6 +112,55 @@ class ResNetEncoder(nn.Module):
         return x
 
 
+class ResNetActor_HSI(nn.Module):
+    # ADMM and HQS
+    def __init__(self, num_inputs, action_bundle):
+        super(ResNetActor_HSI, self).__init__() 
+        self.conv = nn.Conv2d(num_inputs, out_channels=10, kernel_size=1)               
+        self.actor_encoder = ResNetEncoder(10, 18)
+
+        self.fc_softmax = nn.Sequential(*[
+            nn.Linear(512, 2),
+            nn.Softmax(dim=1)
+        ])
+    
+        self.fc_deterministic = nn.Sequential(*[
+            nn.Linear(512, action_bundle*2),
+            nn.Sigmoid()
+        ])
+
+    def forward(self, state, idx_stop=None, stochastic=True):
+        action = {}
+        x = self.conv(state)
+        x = self.actor_encoder(x)
+
+        x = F.avg_pool2d(x, 4)
+        x = x.view(x.size(0), -1)
+    
+        action_probs = self.fc_softmax(x)        
+        action_deterministic = self.fc_deterministic(x)
+        
+        # discrete action
+        dist_categorical = Categorical(action_probs)
+        dist_entropy = dist_categorical.entropy().unsqueeze(1)
+
+        if idx_stop is None:
+            if stochastic:
+                # idx_stop = torch.argmax(action_probs, dim=1)
+                idx_stop = dist_categorical.sample()
+            else:
+                idx_stop = torch.argmax(action_probs, dim=1)
+        
+        action_categorical_logprob = dist_categorical.log_prob(idx_stop).unsqueeze(1)
+
+        half = action_deterministic.shape[1] // 2
+        action['sigma_d'] = action_deterministic[:, :half] * 70 / 255
+        action['mu'] = action_deterministic[:, half:] # [0-1]
+        action['idx_stop'] = idx_stop
+        
+        return action, action_categorical_logprob, dist_entropy
+    
+
 class ResNetActor(nn.Module):
     # ADMM and HQS
     def __init__(self, num_inputs, action_bundle):

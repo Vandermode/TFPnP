@@ -32,8 +32,11 @@ class Evaluator(object):
             avg_meters = AverageMeters()        
             observation = None
             for k, data in enumerate(val_loader):
-                data_name = data['name'][0]
-                data.pop('name')
+                if name in data.keys():
+                    data_name = data['name'][0]
+                    data.pop('name')
+                else:
+                    data_name = 'test'
                 assert data['gt'].shape[0] == 1
                 # reset at the start of episode                
                 observation = env.reset(data=data)
@@ -47,7 +50,7 @@ class Evaluator(object):
                 episode_reward = np.zeros(1)            
                 all_done = False
 
-                psnr_input = pnsr_qrnn3d(input, gt)
+                psnr_input = pnsr_qrnn3d(input, gt, data_range=1)
                 sigma_d_seq = []
                 mu_seq = []
                 tau_seq = []
@@ -93,7 +96,7 @@ class Evaluator(object):
                     #     tau_seq.extend(list(to_numpy(action['tau'][0])))
 
                     input, output, gt = env.get_images(ob)
-                    cur_psnr = pnsr_qrnn3d(output, gt)
+                    cur_psnr = pnsr_qrnn3d(output, gt, data_range=1)
                     psnr_seq.append(cur_psnr.item())      
                     reward_seq.append(reward.item())
 

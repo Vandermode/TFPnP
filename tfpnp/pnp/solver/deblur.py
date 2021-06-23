@@ -22,13 +22,17 @@ class ADMMSolver_Deblur(PnPSolver):
         u = torch.zeros_like(x)
         return torch.cat((x, v, u), dim=1)
     
-    def forward(self, inputs, parameters, iter_num):
+    def forward(self, inputs, parameters, iter_num=None):
     
         variables, (FB, FBC, F2B, FBFy) = inputs
         rhos, sigmas = parameters
         
         x, v, u = torch.split(variables, variables.shape[1] // 3, dim=1)
         
+        # infer iter_num from provided hyperparameters
+        if iter_num is None:
+            iter_num = rhos.shape[-1]
+            
         for i in range(iter_num):
             # --------------------------------
             # step 1, FFT
