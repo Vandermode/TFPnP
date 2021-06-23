@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
-from functools import partial
-from tfpnp.util.metric import pnsr_qrnn3d
-from tfpnp.trainer.a2cddpg.base import A2CDDPGTrainer
-import cv2
+from tfpnp.trainer import A2CDDPGTrainer
 import torch
 from tensorboardX import SummaryWriter
-from scipy.io import loadmat
 
 from script.options import TrainOptions
 
