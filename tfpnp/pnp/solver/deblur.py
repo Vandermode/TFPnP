@@ -6,7 +6,8 @@ from ..util.dpir import utils_sisr as sr
 
 class ADMMSolver_Deblur(PnPSolver):
     def __init__(self, denoiser: Denoiser):
-        super().__init__(denoiser)
+        super().__init__()
+        self.denoiser = denoiser
     
     @property
     def num_var(self):

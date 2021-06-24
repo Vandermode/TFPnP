@@ -44,7 +44,7 @@ class PnPEnv(DifferentiableEnv):
     def __init__(self, data_loader, solver, max_step, device):
         super(PnPEnv, self).__init__() 
         self.data_loader = data_loader
-        self.data_iterator = iter(data_loader)
+        self.data_iterator = iter(data_loader) if data_loader is not None else None
         self.device = device
         
         self.solver = solver

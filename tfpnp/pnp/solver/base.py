@@ -1,11 +1,7 @@
 import torch.nn as nn
-from ..denoiser import Denoiser
 
 class PnPSolver(nn.Module):
-    def __init__(self, denoiser: Denoiser):
-        super(PnPSolver, self).__init__()        
-        self.denoiser = denoiser    
-
+   
     def reset(self, data):
         """ Reset the internal states according to the input data
 

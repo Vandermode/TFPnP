@@ -6,7 +6,8 @@ from ..util import transforms
 
 class ADMMSolver_CSMRI(PnPSolver):
     def __init__(self, denoiser: Denoiser):
-        super().__init__(denoiser)
+        super().__init__()
+        self.denoiser = denoiser
     
     @property
     def num_var(self):
