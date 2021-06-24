@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from scipy import fftpack
 import torch
 from scipy import ndimage
 from . import utils_image as util

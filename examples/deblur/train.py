@@ -5,9 +5,9 @@ from tensorboardX import SummaryWriter
 
 from options import TrainOptions
 from evaluator import EvaluatorDeblur
+from env import DeblurEnv
+from dataset import HSIDeblurDataset
 
-from tfpnp.env.deblur import DeblurEnv
-from tfpnp.data.dataset import HSIDeblurDataset
 from tfpnp.pnp.solver.deblur import ADMMSolver_Deblur
 from tfpnp.pnp.denoiser import GRUNetDenoiser
 from tfpnp.policy.resnet import ResNetActor_HSI
