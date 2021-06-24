@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import torch
 import torch.utils.data
 
@@ -29,7 +31,7 @@ def get_dataloaders(opt):
     
     val_names = ['icvl']
     
-    return train_loader, val_loaders, val_names
+    return train_loader, dict(zip(val_names, val_loaders))
 
 def lr_scheduler(step):
     if step < 10000:
@@ -44,7 +46,7 @@ if __name__ == "__main__":
     
     writer = SummaryWriter('./train_log/{}'.format(opt.exp))
 
-    train_loader, val_loaders, val_names = get_dataloaders(opt)
+    train_loader, val_loaders = get_dataloaders(opt)
 
     policy_network = ResNetActor_HSI(189, opt.action_pack).to(device)
     critic = ResNet_wobn(189, 18, 1).to(device)
@@ -52,9 +54,10 @@ if __name__ == "__main__":
     
     denoiser = GRUNetDenoiser().to(device)
     solver = ADMMSolver_Deblur(denoiser)
-    
     env = DeblurEnv(train_loader, solver, max_step=opt.max_step, device=device)
-    evaluator = EvaluatorDeblur(opt, val_loaders, val_names, writer)
+    
+    eval_env = DeblurEnv(None, solver, max_step=opt.max_step, device=device)
+    evaluator = EvaluatorDeblur(opt, eval_env, val_loaders, writer)
     
     trainer = A2CDDPGTrainer(opt, env, policy_network=policy_network, 
                              critic=critic, critic_target=critic_target, 

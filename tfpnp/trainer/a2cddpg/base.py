@@ -64,7 +64,7 @@ class A2CDDPGTrainer:
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
                 if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
-                    self.evaluator(self.env, self.select_action, step, self.opt.loop_penalty)
+                    self.evaluator.eval(self.select_action, step)
                 
                 if step > self.opt.warmup:
                     self._updaet_policy(episode, step)

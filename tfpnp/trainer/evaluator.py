@@ -5,7 +5,7 @@ import PIL.Image as Image
 import os
 from os.path import join
 
-from ..utils.misc import AverageMeters, prRed
+from ..utils.misc import MetricTracker, prRed
 
 plt.switch_backend('agg')
 
@@ -28,7 +28,7 @@ class Evaluator(object):
         keys = self.keys
 
         for name, val_loader in zip(self.names, self.val_loaders):
-            avg_meters = AverageMeters()        
+            avg_meters = MetricTracker()        
             observation = None
             for k, data in enumerate(val_loader):
                 if name in data.keys():

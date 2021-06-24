@@ -1,10 +1,14 @@
 import os
 import torch
 import torch.nn.functional as F
+import numpy as np
 
 USE_CUDA = torch.cuda.is_available()
     
-
+def torch2img255(img):
+    img = to_numpy(img[0,...])
+    img = np.repeat((np.clip(img, 0, 1) * 255).astype(np.uint8), 3, axis=0)
+    return img
 
 # https://github.com/pytorch/pytorch/issues/16885
 class DataParallel(torch.nn.DataParallel):
@@ -15,10 +19,9 @@ class DataParallel(torch.nn.DataParallel):
             return getattr(self.module, name)
 
 
-class AverageMeters(object):
+class MetricTracker(object):
     def __init__(self, dic=None, total_num=None):
         self.dic = dic or {}
-        # self.total_num = total_num
         self.total_num = total_num or {}
     
     def update(self, new_dic):
