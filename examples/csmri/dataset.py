@@ -5,7 +5,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 from scipy.io import loadmat
 
-from tfpnp.data.dataset import scale_height, scale_width
+from tfpnp.data.util import scale_height, scale_width
 from tfpnp.pnp.util import transforms
 from tfpnp.pnp.util.transforms import  complex2real
 

@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-from ..data.dataset import dict_to_device
+from ..data.util import dict_to_device
 from ..util.misc import to_numpy
 
 

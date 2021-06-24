@@ -8,7 +8,7 @@ from torch.utils.data.dataset import Dataset
 
 from tfpnp.pnp.util.dpir.utils_image import single2tensor4
 from tfpnp.pnp.util.dpir import utils_sisr as sr
-from tfpnp.data.dataset import center_crop
+from tfpnp.data.util import center_crop
 
 def fspecial_gaussian(hsize, sigma):
     hsize = [hsize, hsize]

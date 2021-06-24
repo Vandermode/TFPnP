@@ -7,8 +7,8 @@ from scipy.io import loadmat
 from options import TrainOptions
 from env import CSMRIEnv
 from dataset import CSMRIDataset, CSMRIEvalDataset
+from noise_models import GaussianModelD
 
-from tfpnp.data.noise_models import GaussianModelD
 from tfpnp.pnp.solver.csmri import ADMMSolver_CSMRI
 from tfpnp.pnp.denoiser import UNetDenoiser2D
 from tfpnp.policy.resnet import ResNetActor

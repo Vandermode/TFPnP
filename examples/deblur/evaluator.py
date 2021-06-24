@@ -115,7 +115,8 @@ class EvaluatorDeblur(object):
                 psnr_fixed = self.psnr_fn(x, gt)
                 
                 avg_meters.update({'acc_reward': episode_reward, 'psnr': psnr_finished, 'psnr_fixed': psnr_fixed, 'iters': episode_steps})
-
+                print(data_name, psnr_input, psnr_finished, psnr_fixed)
+                
             prRed('Step_{:07d}: {} | loop_penalty: {:.2f} | {}'.format(step - 1, name, loop_penalty, avg_meters))
 
     def seq_plot(self, seq, xlabel, ylabel, color='blue'):
