@@ -6,8 +6,8 @@ from scipy import ndimage
 from scipy.io import loadmat
 from torch.utils.data.dataset import Dataset
 
-from tfpnp.pnp.util.dpir.utils_image import single2tensor4
-from tfpnp.pnp.util.dpir import utils_sisr as sr
+from utils.dpir.utils_image import single2tensor4
+from utils.dpir import utils_sisr as sr
 from tfpnp.data.util import center_crop
 
 def fspecial_gaussian(hsize, sigma):

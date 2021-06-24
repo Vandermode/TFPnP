@@ -1,8 +1,8 @@
 import torch
 
-from .base import PnPSolver
-from ..denoiser import Denoiser
-from ..util import transforms
+from tfpnp.pnp.solver.base import PnPSolver
+from tfpnp.pnp.denoiser import Denoiser
+from tfpnp.utils import transforms
 
 class ADMMSolver_CSMRI(PnPSolver):
     def __init__(self, denoiser: Denoiser):

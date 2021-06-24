@@ -1,4 +1,3 @@
-from tfpnp.util.metric import pnsr_qrnn3d
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,8 +6,9 @@ import os
 from os.path import join
 from scipy.io import savemat
 
-from tfpnp.util.misc import AverageMeters, to_numpy, prRed
-from tfpnp.pnp.util.dpir import utils_pnp as pnp
+from tfpnp.utils.metric import pnsr_qrnn3d
+from tfpnp.utils.misc import AverageMeters, to_numpy, prRed
+from utils.dpir import utils_pnp as pnp
 
 plt.switch_backend('agg')
 

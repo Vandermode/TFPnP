@@ -1,6 +1,6 @@
 import torch
-from tfpnp.env.base import PnPEnv
-from tfpnp.pnp.util.transforms import complex2channel, complex2real, real2complex
+from tfpnp.env import PnPEnv
+from tfpnp.utils.transforms import complex2channel, complex2real, real2complex
 
 BOOL = True if float(torch.__version__[:3]) >= 1.3 else False
 

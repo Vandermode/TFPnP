@@ -3,9 +3,9 @@ import torch.nn as nn
 from torch.optim.adam import Adam
 from tensorboardX.writer import SummaryWriter
 
-from ...util.misc import prRed, prBlack, soft_update, hard_update
-from ...env.base import PnPEnv
-from ...util.rpm import ReplayMemory
+from ...utils.misc import prRed, prBlack, soft_update, hard_update
+from ...env import PnPEnv
+from ...utils.rpm import ReplayMemory
 
 """[summary]
 https://www.jianshu.com/p/f9e7140ce19d

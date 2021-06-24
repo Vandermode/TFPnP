@@ -7,8 +7,8 @@ from options import TrainOptions
 from evaluator import EvaluatorDeblur
 from env import DeblurEnv
 from dataset import HSIDeblurDataset
+from solver import ADMMSolver_Deblur
 
-from tfpnp.pnp.solver.deblur import ADMMSolver_Deblur
 from tfpnp.pnp.denoiser import GRUNetDenoiser
 from tfpnp.policy.resnet import ResNetActor_HSI
 from tfpnp.trainer.a2cddpg.critic import ResNet_wobn

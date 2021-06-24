@@ -1,11 +1,11 @@
-from tfpnp.util.metric import pnsr_qrnn3d
+from tfpnp.utils.metric import pnsr_qrnn3d
 import numpy as np
 import matplotlib.pyplot as plt
 import PIL.Image as Image
 import os
 from os.path import join
 
-from ..util.misc import AverageMeters, prRed
+from ..utils.misc import AverageMeters, prRed
 
 plt.switch_backend('agg')
 

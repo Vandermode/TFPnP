@@ -1,8 +1,9 @@
 import torch
 
-from .base import PnPSolver
-from ..denoiser import Denoiser
-from ..util.dpir import utils_sisr as sr
+from tfpnp.pnp.solver.base import PnPSolver
+from tfpnp.pnp.denoiser import Denoiser
+
+from utils.dpir import utils_sisr as sr
 
 class ADMMSolver_Deblur(PnPSolver):
     def __init__(self, denoiser: Denoiser):

@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 
 from ..data.util import dict_to_device
-from ..util.misc import to_numpy
+from ..utils.misc import to_numpy
 
 
 class Env:

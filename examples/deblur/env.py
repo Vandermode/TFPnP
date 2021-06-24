@@ -1,6 +1,6 @@
 import torch
-from tfpnp.env.base import PnPEnv
-from tfpnp.pnp.util.transforms import complex2channel, complex2real, real2complex
+from tfpnp.env import PnPEnv
+from tfpnp.utils.transforms import complex2channel, complex2real, real2complex
 
 class DeblurEnv(PnPEnv):
     def __init__(self, data_loader, solver, max_step, device):

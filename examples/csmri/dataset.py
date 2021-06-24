@@ -6,8 +6,8 @@ from torch.utils.data.dataset import Dataset
 from scipy.io import loadmat
 
 from tfpnp.data.util import scale_height, scale_width
-from tfpnp.pnp.util import transforms
-from tfpnp.pnp.util.transforms import  complex2real
+from tfpnp.utils import transforms
+from tfpnp.utils.transforms import complex2real
 
 
 BOOL = True if float(torch.__version__[:3]) >= 1.3 else False

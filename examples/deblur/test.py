@@ -4,10 +4,10 @@ import numpy as np
 
 from dataset import HSIDeblurDataset
 from env import DeblurEnv
+from solver import ADMMSolver_Deblur
 
-from tfpnp.util.metric import pnsr_qrnn3d
+from tfpnp.utils.metric import pnsr_qrnn3d
 from tfpnp.policy.resnet import ResNetActor_HSI
-from tfpnp.pnp.solver.deblur import ADMMSolver_Deblur
 from tfpnp.pnp.denoiser import GRUNetDenoiser
 from tfpnp.trainer import evaluator
 

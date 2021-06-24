@@ -8,8 +8,8 @@ from options import TrainOptions
 from env import CSMRIEnv
 from dataset import CSMRIDataset, CSMRIEvalDataset
 from noise_models import GaussianModelD
+from solver import ADMMSolver_CSMRI
 
-from tfpnp.pnp.solver.csmri import ADMMSolver_CSMRI
 from tfpnp.pnp.denoiser import UNetDenoiser2D
 from tfpnp.policy.resnet import ResNetActor
 from tfpnp.trainer import A2CDDPGTrainer
