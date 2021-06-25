@@ -7,3 +7,4 @@ tfpnp_old
 .idea
 checkpoints
 tfpnp/pnp/denoiser/pretrained
+log

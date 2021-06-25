@@ -7,7 +7,7 @@ from os.path import join
 
 from utils.dpir import utils_pnp as pnp
 from tfpnp.utils.metric import pnsr_qrnn3d
-from tfpnp.utils.misc import MetricTracker, prRed, torch2img255
+from tfpnp.utils.misc import MetricTracker, prRed
 from tfpnp.env.base import PnPEnv
 
 plt.switch_backend('agg')

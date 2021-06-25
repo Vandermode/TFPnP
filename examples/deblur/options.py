@@ -52,7 +52,7 @@ class TrainOptions:
         self.parser.add_argument('--warmup', default=10, type=int, help='timestep without training but only filling the replay memory')
         self.parser.add_argument('--discount', default=0.99, type=float, help='discount factor')
         self.parser.add_argument('--rmsize', default=100, type=int, help='replay memory size')
-        self.parser.add_argument('--env_batch', default=4, type=int, help='concurrent environment number')
+        self.parser.add_argument('--env_batch', default=3, type=int, help='concurrent environment number')
         self.parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
         self.parser.add_argument('--max_step', default=6, type=int, help='max length for episode')
         self.parser.add_argument('--noise_factor', default=0, type=float, help='noise level for parameter space noise') # 0.04

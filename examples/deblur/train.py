@@ -1,16 +1,14 @@
-from copy import deepcopy
-
 import torch
 import torch.utils.data
 
 from tensorboardX import SummaryWriter
 
 from options import TrainOptions
-from evaluator import EvaluatorDeblur
 from env import DeblurEnv
 from dataset import HSIDeblurDataset
 from solver import ADMMSolver_Deblur
 
+from tfpnp.eval import Evaluator
 from tfpnp.pnp.denoiser import GRUNetDenoiser
 from tfpnp.policy.resnet import ResNetActor_HSI
 from tfpnp.trainer.a2cddpg.critic import ResNet_wobn
@@ -44,7 +42,7 @@ if __name__ == "__main__":
     option = TrainOptions()
     opt = option.parse()
     
-    writer = SummaryWriter('./train_log/{}'.format(opt.exp))
+    writer = SummaryWriter('./log/{}/tensorboard'.format(opt.exp))
 
     train_loader, val_loaders = get_dataloaders(opt)
 
@@ -57,7 +55,7 @@ if __name__ == "__main__":
     env = DeblurEnv(train_loader, solver, max_step=opt.max_step, device=device)
     
     eval_env = DeblurEnv(None, solver, max_step=opt.max_step, device=device)
-    evaluator = EvaluatorDeblur(opt, eval_env, val_loaders, writer)
+    evaluator = Evaluator(opt, eval_env, val_loaders, writer, device=device, savedir='./log/{}/eval'.format(opt.exp))
     
     trainer = A2CDDPGTrainer(opt, env, policy_network=policy_network, 
                              critic=critic, critic_target=critic_target, 

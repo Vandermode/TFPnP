@@ -64,7 +64,6 @@ class Evaluator:
     def eval_fixed(self, data, env, iter_num):
         observation = env.reset(data=data)
         input, _, gt = env.get_images(observation)
-        
         solver_state = env.state['solver']
         
         rhos, sigmas = pnp.get_rho_sigma_admm(sigma=max(0.255/255., 0),

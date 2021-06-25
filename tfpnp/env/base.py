@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 
 from ..data.util import dict_to_device
-from ..utils.misc import to_numpy
+from ..utils.misc import torch2img255
 
 
 class Env:
@@ -155,15 +155,10 @@ class PnPEnv(DifferentiableEnv):
     
         return self._build_next_state(state, solver_state), reward
     
-    def get_images(self, state):
-        def _pre_img(img):
-            img = to_numpy(img[0,...])
-            img = np.repeat((np.clip(img, 0, 1) * 255).astype(np.uint8), 3, axis=0)
-            return img
-
-        input = _pre_img(self._get_attribute(state, 'input'))        
-        output = _pre_img(self._get_attribute(state, 'output'))
-        gt = _pre_img(self._get_attribute(state, 'gt'))
+    def get_images(self, state, pre_process=torch2img255):
+        input = pre_process(self._get_attribute(state, 'input'))        
+        output = pre_process(self._get_attribute(state, 'output'))
+        gt = pre_process(self._get_attribute(state, 'gt'))
 
         return input, output, gt
     

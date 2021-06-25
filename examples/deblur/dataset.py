@@ -55,7 +55,8 @@ class HSIDeblurDataset(Dataset):
         img_L_tensor, k_tensor = single2tensor4(low), single2tensor4(k)
         FB, FBC, F2B, FBFy = sr.pre_calculate(img_L_tensor, k_tensor, 1)
         
-        dic = {'low': img_L_tensor[0], 'FB': FB[0], 'FBC': FBC[0], 'F2B': F2B[0], 'FBFy': FBFy[0], 'gt': gt[0], 'output': img_L_tensor[0], 'name': self.fns[index]}
+        dic = {'low': img_L_tensor[0], 'FB': FB[0], 'FBC': FBC[0], 'F2B': F2B[0], 'FBFy': FBFy[0], 
+               'gt': gt[0], 'output': img_L_tensor[0], 'name': self.fns[index][:-4]}
 
         # low, gt, output: [31,512,512]
         # k: [1,8,8]
