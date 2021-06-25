@@ -95,8 +95,6 @@ class EvaluatorDeblur(object):
         observation = self.env.reset(data=data)
         _, _, gt = self.env.get_images(observation)         
         
-        solver_state = self.env.state['solver']
-        
         iter_num = self.opt.max_step * self.opt.action_pack
         rhos, sigmas = pnp.get_rho_sigma_admm(sigma=max(0.255/255., 0),
                                             iter_num=iter_num,
@@ -113,14 +111,8 @@ class EvaluatorDeblur(object):
         
         ob2,_,_,_,_ = self.env.step({'mu': rhos, 'sigma_d': sigmas, 'idx_stop': idx_stop})
         
-        # parameters = (rhos, sigmas)
-        # inputs = (solver_state, self.env.solver.filter_additional_input(self.env.state))
-        # states = self.env.solver.forward(inputs, parameters, iter_num)
         
-        # x = torch2img255(self.env.solver.get_output(states))
-        
-        _, output, gt = self.env.get_images(ob2)
-        
+        _, output, _ = self.env.get_images(ob2)
         psnr_fixed = pnsr_qrnn3d(output, gt)
         
         return psnr_fixed
