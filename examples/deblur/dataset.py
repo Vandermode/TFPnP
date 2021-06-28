@@ -39,7 +39,7 @@ class HSIDeblurDataset(Dataset):
         self.datadir = datadir
         self.target_size = target_size
         self.fns = [im for im in os.listdir(self.datadir) if im.endswith(".mat")]  
-        # self.fns = self.fns[10:] if training else self.fns[:10]
+        self.fns = self.fns[10:] if training else self.fns[:10]
         self.blur = GaussianBlur()
         
     def __getitem__(self, index):

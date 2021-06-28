@@ -14,7 +14,7 @@ from tfpnp.pnp.denoiser import UNetDenoiser2D
 from tfpnp.policy.resnet import ResNetActor
 from tfpnp.trainer import A2CDDPGTrainer
 from tfpnp.trainer.a2cddpg.critic import ResNet_wobn
-from tfpnp.trainer.evaluator import Evaluator
+from tfpnp.eval import Evaluator
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -42,7 +42,7 @@ def get_dataloaders(train_dir, mri_dir, mask_dir, opt):
     
     val_names = ['m7x2', 'm7x4', 'm7x8']
     
-    return train_loader, val_loaders, val_names
+    return train_loader, dict(zip(val_names, val_loaders)), val_names
 
 def lr_scheduler(step):
     if step < 10000:
@@ -70,7 +70,8 @@ if __name__ == "__main__":
     denoiser = UNetDenoiser2D().to(device)
     solver = ADMMSolver_CSMRI(denoiser)
     env = CSMRIEnv(train_loader, solver, max_step=opt.max_step, device=device)
-    evaluator = Evaluator(opt, val_loaders, val_names, writer)
+    eval_env = CSMRIEnv(None, solver, max_step=opt.max_step, device=device)
+    evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)
     
     trainer = A2CDDPGTrainer(opt, env, policy_network=policy_network, 
                              critic=critic, critic_target=critic_target, 

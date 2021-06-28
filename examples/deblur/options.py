@@ -52,15 +52,16 @@ class TrainOptions:
         self.parser.add_argument('--warmup', default=10, type=int, help='timestep without training but only filling the replay memory')
         self.parser.add_argument('--discount', default=0.99, type=float, help='discount factor')
         self.parser.add_argument('--rmsize', default=100, type=int, help='replay memory size')
-        self.parser.add_argument('--env_batch', default=3, type=int, help='concurrent environment number')
+        # env batch is an important hyperparameter, env_batch<=3 might not work
+        self.parser.add_argument('--env_batch', default=4, type=int, help='concurrent environment number') 
         self.parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
-        self.parser.add_argument('--max_step', default=6, type=int, help='max length for episode')
+        self.parser.add_argument('--max_step', default=10, type=int, help='max length for episode')
         self.parser.add_argument('--noise_factor', default=0, type=float, help='noise level for parameter space noise') # 0.04
 
         self.parser.add_argument('--epochs', default=10, type=int, help='number of epochs for training')
         self.parser.add_argument('--steps_per_epoch', default=100, type=int, help='number of steps per epoch')
         self.parser.add_argument('--save_freq', default=1, type=int, help='number of steps per epoch')
-        self.parser.add_argument('--eval_per_episode', default=10, type=int, help='number of steps per epoch')
+        self.parser.add_argument('--eval_per_episode', default=5, type=int, help='number of steps per epoch')
         
         self.parser.add_argument('--episode_train_times', default=10, type=int, help='train times for each episode')    
         self.parser.add_argument('--resume', '-r', default=None, type=str, help='Resuming model path')
