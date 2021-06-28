@@ -16,6 +16,7 @@ def seq_plot(seq, xlabel, ylabel, color='blue', save_path=None):
     
     if save_path is not None:
         plt.savefig(save_path)
+    plt.close(fig)
     return fig, ax
 
 def save_img(img, path):

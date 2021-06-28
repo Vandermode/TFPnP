@@ -79,7 +79,7 @@ class GRUNetDenoiser:
         x = torch.squeeze(x)
         if x.ndim == 3:
             x = torch.unsqueeze(x, 0)
-        return x
+        return torch.clamp(x, 0, 1)
         
     def to(self, device):
         self.model.to(device)
