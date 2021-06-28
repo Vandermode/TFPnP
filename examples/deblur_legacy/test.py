@@ -123,12 +123,12 @@ class Evaluator:
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    val_dataset = HSIDeblurDataset('/media/exthdd/datasets/hsi/ECCVData/cave_512_15', training=False, target_size=(128,128))
+    val_dataset = HSIDeblurDataset('/media/exthdd/datasets/hsi/ECCVData/icvl_512_0', training=False, target_size=(128,128))
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False,
                                               num_workers=0, pin_memory=True)
     
     policy_network = ResNetActor_HSI(189, 1).to(device)
-    policy_network.load_state_dict(torch.load('checkpoints/maxstep6/actor_0000599.pkl'))
+    policy_network.load_state_dict(torch.load('checkpoints/v1/actor_0000599.pkl'))
     
     denoiser = GRUNetDenoiser().to(device)
     solver = ADMMSolver_Deblur(denoiser)

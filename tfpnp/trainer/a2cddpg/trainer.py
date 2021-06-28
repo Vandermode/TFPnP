@@ -6,6 +6,7 @@ from tensorboardX.writer import SummaryWriter
 from ...utils.misc import prRed, prBlack, soft_update, hard_update
 from ...env import PnPEnv
 from ...utils.rpm import ReplayMemory
+from ...data.batch import Batch
 
 """[summary]
 https://www.jianshu.com/p/f9e7140ce19d
@@ -172,13 +173,20 @@ class A2CDDPGTrainer:
         return action
     
     def save_experience(self, ob):
-        ob_detached = ob.clone().detach().cpu() # crucial to prevent out of gpu memory
-        for i in range(ob_detached.shape[0]):
-            self.buffer.store(ob_detached[i])
-            
+        for k, v in ob.items():
+            if isinstance(v, torch.Tensor):
+                ob[k] = ob[k].clone().detach().cpu()
+                
+        for i in range(ob.shape[0]):
+            self.buffer.store(ob[i])
+    
     def convert2batch(self, states):
-        return torch.stack(states, dim=0).to(self.device)
-        
+        batch = Batch.stack(states)
+        for k, v in batch.items():
+            if isinstance(v, torch.Tensor):
+                batch[k] = batch[k].to(self.device)
+        return batch
+    
     def save_model(self, path, step):
         if step is None:
             torch.save(self.actor.state_dict(),'{}/actor.pkl'.format(path))

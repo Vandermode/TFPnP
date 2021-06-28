@@ -99,7 +99,7 @@ class PnPEnv(DifferentiableEnv):
         
         # construct state of time step
         B,_,W,H = data['gt'].shape
-        T = torch.ones([B, 1, W, H, 2], dtype=torch.float32, device=self.device) * self.cur_step / self.max_step
+        T = torch.ones([B, 1, W, H], dtype=torch.float32, device=self.device) * self.cur_step / self.max_step
         data.update({'T': T})
 
         self.state = data
