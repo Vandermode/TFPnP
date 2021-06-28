@@ -31,7 +31,9 @@ class Evaluator(object):
                     data_name = 'case' + str(index)
             
                 # run
-                psnr_init, psnr_finished, info, imgs = self.eval_single(data, policy)
+                psnr_init, psnr_finished, info, imgs = eval_single(self.env, data, policy, 
+                                                                   max_step=self.opt.max_step,
+                                                                   loop_penalty=self.opt.loop_penalty)
         
                 episode_steps, episode_reward, psnr_seq, reward_seq = info
                 input, output_init, output, gt = imgs
@@ -56,42 +58,42 @@ class Evaluator(object):
             prRed('Step_{:07d}: {} | {}'.format(step - 1, name, metric_tracker))
 
     
-    def eval_single(self, data, policy):                    
-        observation = self.env.reset(data=data)
-        _, output_init, gt = self.env.get_images(observation)
-        psnr_init = pnsr_qrnn3d(output_init[0], gt[0])
-      
-        episode_steps = 0
-        episode_reward = np.zeros(1)            
+def eval_single(env, data, policy, max_step, loop_penalty):                    
+    observation = env.reset(data=data)
+    _, output_init, gt = env.get_images(observation)
+    psnr_init = pnsr_qrnn3d(output_init[0], gt[0])
+    
+    episode_steps = 0
+    episode_reward = np.zeros(1)            
 
-        psnr_seq = []
-        reward_seq = [0]
+    psnr_seq = []
+    reward_seq = [0]
+    
+    ob = observation
+    while episode_steps < max_step:
+        action = policy(env.get_policy_state(ob), test=True)
         
-        ob = observation
-        while (episode_steps < self.opt.max_step or not self.opt.max_step):
-            action = policy(self.env.get_policy_state(ob), test=True)
-            
-            # since batch size = 1, ob and ob_masked are always identicial
-            ob, _, reward, done, _ = self.env.step(action) 
-            
-            if not done: 
-                reward = reward - self.opt.loop_penalty
-
-            episode_reward += reward.item()
-            episode_steps += 1
-
-            _, output, gt = self.env.get_images(ob)
-            cur_psnr = pnsr_qrnn3d(output[0], gt[0])
-            psnr_seq.append(cur_psnr.item())      
-            reward_seq.append(reward.item())
-
-            if done:
-                break
-
-        input, output, gt = self.env.get_images(ob)                
-        psnr_finished = pnsr_qrnn3d(output[0], gt[0])
-
-        info = (episode_steps, episode_reward, psnr_seq, reward_seq)
-        imgs = (input[0], output_init[0], output[0], gt[0])
+        # since batch size = 1, ob and ob_masked are always identicial
+        ob, _, reward, done, _ = env.step(action) 
         
-        return psnr_init, psnr_finished, info, imgs
+        if not done: 
+            reward = reward - loop_penalty
+
+        episode_reward += reward.item()
+        episode_steps += 1
+
+        _, output, gt = env.get_images(ob)
+        cur_psnr = pnsr_qrnn3d(output[0], gt[0])
+        psnr_seq.append(cur_psnr.item())      
+        reward_seq.append(reward.item())
+
+        if done:
+            break
+
+    input, output, gt = env.get_images(ob)                
+    psnr_finished = pnsr_qrnn3d(output[0], gt[0])
+
+    info = (episode_steps, episode_reward, psnr_seq, reward_seq)
+    imgs = (input[0], output_init[0], output[0], gt[0])
+    
+    return psnr_init, psnr_finished, info, imgs
