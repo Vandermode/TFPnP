@@ -37,7 +37,7 @@ class Evaluator(object):
                                                                    loop_penalty=self.opt.loop_penalty,
                                                                    metric=self.metric)
         
-                episode_steps, episode_reward, psnr_seq, reward_seq = info
+                episode_steps, episode_reward, psnr_seq, reward_seq, action_seqs = info
                 input, output_init, output, gt = imgs
                 
                 # save metric
@@ -53,7 +53,10 @@ class Evaluator(object):
                     save_img(output_init, join(base_dir, 'output_init.png'))            
                     save_img(output, join(base_dir, 'output.png'))            
                     save_img(gt, join(base_dir, 'gt.png'))            
-                
+                    
+                    for k, v in action_seqs.items():
+                        seq_plot(v, 'step', k, save_path=join(base_dir, k+'.png'))            
+                        
                     seq_plot(psnr_seq, 'step', 'psnr', save_path=join(base_dir, 'psnr.png'))
                     seq_plot(reward_seq, 'step', 'reward', save_path=join(base_dir, 'reward.png'))
                 
@@ -70,6 +73,7 @@ def eval_single(env, data, policy, max_step, loop_penalty, metric):
 
     psnr_seq = []
     reward_seq = [0]
+    action_seqs = {}
     
     ob = observation
     while episode_steps < max_step:
@@ -88,14 +92,19 @@ def eval_single(env, data, policy, max_step, loop_penalty, metric):
         cur_psnr = metric(output[0], gt[0])
         psnr_seq.append(cur_psnr.item())      
         reward_seq.append(reward.item())
-
+        
+        for k, v in action.items():
+            if k not in action_seqs.keys():
+                action_seqs[k] = []
+            action_seqs[k].append(v.item())
+        
         if done:
             break
 
     input, output, gt = env.get_images(ob)                
     psnr_finished = metric(output[0], gt[0])
 
-    info = (episode_steps, episode_reward, psnr_seq, reward_seq)
+    info = (episode_steps, episode_reward, psnr_seq, reward_seq, action_seqs)
     imgs = (input[0], output_init[0], output[0], gt[0])
     
     return psnr_init, psnr_finished, info, imgs
