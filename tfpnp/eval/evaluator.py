@@ -4,18 +4,19 @@ from os.path import join
 import numpy as np
 
 from ..utils.visualize import save_img, seq_plot
-from ..utils.metric import pnsr_qrnn3d
+from ..utils.metric import psnr_qrnn3d
 from ..utils.misc import MetricTracker, prRed
 from ..env.base import PnPEnv
 
 class Evaluator(object):
-    def __init__(self, opt, env:PnPEnv, val_loaders, writer, device, savedir=None):  
+    def __init__(self, opt, env:PnPEnv, val_loaders, writer, device, savedir=None, metric=psnr_qrnn3d):  
         self.opt = opt
         self.env = env
         self.val_loaders = val_loaders
         self.writer = writer
         self.device = device
         self.savedir = savedir
+        self.metric = metric
 
     def eval(self, policy, step):        
         for name, val_loader in self.val_loaders.items():
@@ -33,7 +34,8 @@ class Evaluator(object):
                 # run
                 psnr_init, psnr_finished, info, imgs = eval_single(self.env, data, policy, 
                                                                    max_step=self.opt.max_step,
-                                                                   loop_penalty=self.opt.loop_penalty)
+                                                                   loop_penalty=self.opt.loop_penalty,
+                                                                   metric=self.metric)
         
                 episode_steps, episode_reward, psnr_seq, reward_seq = info
                 input, output_init, output, gt = imgs
@@ -58,10 +60,10 @@ class Evaluator(object):
             prRed('Step_{:07d}: {} | {}'.format(step - 1, name, metric_tracker))
 
     
-def eval_single(env, data, policy, max_step, loop_penalty):                    
+def eval_single(env, data, policy, max_step, loop_penalty, metric):                    
     observation = env.reset(data=data)
     _, output_init, gt = env.get_images(observation)
-    psnr_init = pnsr_qrnn3d(output_init[0], gt[0])
+    psnr_init = metric(output_init[0], gt[0])
     
     episode_steps = 0
     episode_reward = np.zeros(1)            
@@ -83,7 +85,7 @@ def eval_single(env, data, policy, max_step, loop_penalty):
         episode_steps += 1
 
         _, output, gt = env.get_images(ob)
-        cur_psnr = pnsr_qrnn3d(output[0], gt[0])
+        cur_psnr = metric(output[0], gt[0])
         psnr_seq.append(cur_psnr.item())      
         reward_seq.append(reward.item())
 
@@ -91,7 +93,7 @@ def eval_single(env, data, policy, max_step, loop_penalty):
             break
 
     input, output, gt = env.get_images(ob)                
-    psnr_finished = pnsr_qrnn3d(output[0], gt[0])
+    psnr_finished = metric(output[0], gt[0])
 
     info = (episode_steps, episode_reward, psnr_seq, reward_seq)
     imgs = (input[0], output_init[0], output[0], gt[0])

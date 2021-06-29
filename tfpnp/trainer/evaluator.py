@@ -1,4 +1,4 @@
-from tfpnp.utils.metric import pnsr_qrnn3d
+from tfpnp.utils.metric import psnr_qrnn3d
 import numpy as np
 import matplotlib.pyplot as plt
 import PIL.Image as Image
@@ -11,7 +11,7 @@ plt.switch_backend('agg')
 
 
 class Evaluator(object):
-    def __init__(self, opt, val_loaders, names, writer, psnr_fn=pnsr_qrnn3d, keys=None, savedir=None):  
+    def __init__(self, opt, val_loaders, names, writer, psnr_fn=psnr_qrnn3d, keys=None, savedir=None):  
         self.val_loaders = val_loaders
         self.names = names
         self.max_step = opt.max_step

@@ -10,7 +10,7 @@ from env import DeblurEnv
 from solver import ADMMSolver_Deblur
 import utils.dpir.utils_pnp as pnp
 
-from tfpnp.utils.metric import pnsr_qrnn3d
+from tfpnp.utils.metric import psnr_qrnn3d
 from tfpnp.policy.resnet import ResNetActor_HSI
 from tfpnp.pnp.denoiser import GRUNetDenoiser
 from tfpnp.trainer import evaluator
@@ -22,7 +22,7 @@ class Evaluator:
         self.policy_network = policy_network
         self.env = env
         self.max_step = 10
-        self.psnr_fn = pnsr_qrnn3d
+        self.psnr_fn = psnr_qrnn3d
         self.savedir = savedir
         
         self.policy_network.eval()
