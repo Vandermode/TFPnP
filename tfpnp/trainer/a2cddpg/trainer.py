@@ -3,10 +3,11 @@ import torch.nn as nn
 from torch.optim.adam import Adam
 from tensorboardX.writer import SummaryWriter
 
-from ...utils.misc import prRed, prBlack, soft_update, hard_update
-from ...env import PnPEnv
-from ...utils.rpm import ReplayMemory
 from ...data.batch import Batch
+from ...env import PnPEnv
+from ...utils.misc import prRed, prBlack, soft_update, hard_update
+from ...utils.rpm import ReplayMemory
+from ...utils.log import Logger, COLOR
 
 """[summary]
 https://www.jianshu.com/p/f9e7140ce19d
@@ -21,7 +22,7 @@ def lr_scheduler(step):
 
 class A2CDDPGTrainer:
     def __init__(self, opt, env: PnPEnv, policy_network, critic, critic_target, device,
-                 evaluator=None, writer:SummaryWriter=None):
+                 evaluator=None, writer:SummaryWriter=None, logger=None):
         self.opt = opt
         self.env = env
         self.actor = policy_network
@@ -30,6 +31,7 @@ class A2CDDPGTrainer:
         self.evaluator = evaluator
         self.writer = writer
         self.device = device
+        self.logger = Logger() if logger is None else logger
         
         self.total_steps = opt.epochs * opt.steps_per_epoch
 
@@ -80,7 +82,8 @@ class A2CDDPGTrainer:
                 epoch += 1
 
                 if (epoch % self.opt.save_freq == 0) or (epoch == self.opt.epochs):
-                    prRed('Saving model at Step_{:07d}...'.format(step))
+                    self.evaluator.eval(self.select_action, step)
+                    self.logger.log('Saving model at Step_{:07d}...'.format(step), color=COLOR.RED)
                     self.save_model(self.opt.output, step)
     
     
@@ -107,7 +110,7 @@ class A2CDDPGTrainer:
             self.writer.add_scalar('train/dist_entropy', mean_dist_entropy, step)
             self.writer.add_scalar('train/critic_loss', mean_value_loss, step)
 
-        prBlack('#{}: steps: {} | Q: {:.2f} | dist_entropy: {:.2f} | critic_loss: {:.2f}' \
+        self.logger.log('#{}: steps: {} | Q: {:.2f} | dist_entropy: {:.2f} | critic_loss: {:.2f}' \
             .format(episode, step, mean_Q, mean_dist_entropy, mean_value_loss))
     
     
