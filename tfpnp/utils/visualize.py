@@ -22,7 +22,7 @@ def seq_plot(seq, xlabel, ylabel, color='blue', save_path=None):
 def save_img(img, path):
     # img: [C, W, H]
     c, w, h = img.shape
-    if c != 1 and c != 3:
+    if c != 3:
         img = img[c//2]
     Image.fromarray(img).save(path)
     

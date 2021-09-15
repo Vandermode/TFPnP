@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 class PnPSolver(nn.Module):
    
@@ -40,3 +41,34 @@ class PnPSolver(nn.Module):
     @property
     def num_var(self):
         raise NotImplementedError
+    
+    def filter_additional_input(self, state):
+        raise NotImplementedError
+    
+    def filter_hyperparameter(self, action):
+        raise NotImplementedError
+    
+    
+class ADMMSolver(PnPSolver):
+    def __init__(self, denoiser):
+        super().__init__()
+        self.denoiser = denoiser
+    
+    @property
+    def num_var(self):
+        return 3
+    
+    def reset(self, data):
+        x = data['input'].clone().detach()
+        v = x.clone().detach()
+        u = torch.zeros_like(x)
+        return torch.cat((x, v, u), dim=1)
+    
+    def get_output(self, state):
+        # just return x after convert to real
+        # x's shape [B,1,W,H]
+        x, _, _ = torch.split(state, state.shape[1] // 3, dim=1)
+        return x
+    
+    def filter_hyperparameter(self, action):
+        return action['mu'], action['sigma_d']

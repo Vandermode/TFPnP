@@ -96,7 +96,8 @@ def eval_single(env, data, policy, max_step, loop_penalty, metric):
         for k, v in action.items():
             if k not in action_seqs.keys():
                 action_seqs[k] = []
-            action_seqs[k].append(v.item())
+            for i in range(v.shape[0]):
+                action_seqs[k].append(v[i])
         
         if done:
             break
