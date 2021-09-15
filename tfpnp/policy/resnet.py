@@ -178,7 +178,7 @@ class ResNetActor(nn.Module):
             nn.Sigmoid()
         ])
 
-    def forward(self, state, idx_stop=None, stochastic=True):
+    def forward(self, state, hidden=None, idx_stop=None, stochastic=True):
         action = {}
         # x = self.conv(state)
         x = self.actor_encoder(state)
@@ -207,8 +207,10 @@ class ResNetActor(nn.Module):
         action['mu'] = action_deterministic[:, half:] # [0-1]
         action['idx_stop'] = idx_stop
         
-        return action, action_categorical_logprob, dist_entropy
+        return action, action_categorical_logprob, dist_entropy, None
 
+    def init_state(self):
+        return None
 
 class ResNetActor_PG(nn.Module):
     # PG and APG

@@ -47,27 +47,29 @@ class A2CDDPGTrainer:
     def train(self):
         # get initial observation
         ob = self.env.reset()
+        hidden = self.actor.init_state()
+        
         episode, episode_step = 0, 0
         epoch = 0
         
         for step in range(self.total_steps):
             # select a action
             # TODO: 1. sample from action space at the first few steps for better exploration. 2. Noise action
-            action = self.select_action(self.env.get_policy_state(ob))
+            action, hidden = self.run_policy(self.env.get_policy_state(ob), hidden)
             
             # step the env
             _, ob2_masked, _, done, _ = self.env.step(action)
             episode_step += 1
             
             # store experience to replay buffer: in a2cddpg, we only need ob actually
-            self.save_experience(ob)
+            self.save_experience(ob, hidden)
             
             ob = ob2_masked
             
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
                 if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
-                    self.evaluator.eval(self.select_action, step)
+                    self.evaluator.eval(self.actor, step)
                 
                 if step > self.opt.warmup:
                     self._updaet_policy(episode, step)
@@ -82,7 +84,7 @@ class A2CDDPGTrainer:
                 epoch += 1
 
                 if (epoch % self.opt.save_freq == 0) or (epoch == self.opt.epochs):
-                    self.evaluator.eval(self.select_action, step)
+                    self.evaluator.eval(self.actor, step)
                     self.logger.log('Saving model at Step_{:07d}...'.format(step), color=COLOR.RED)
                     self.save_model(self.opt.output, step)
     
@@ -123,10 +125,11 @@ class A2CDDPGTrainer:
             
         # convert list of named tuple into named tuple of batch
         state = self.convert2batch(samples)        
+        hidden = state.hidden
         
         policy_state = self.env.get_policy_state(state)
 
-        action, action_log_prob, dist_entropy = self.actor(policy_state)
+        action, action_log_prob, dist_entropy, _ = self.actor(policy_state, hidden)
      
         state2, reward = self.env.forward(state, action)
         reward -= self.opt.loop_penalty
@@ -168,18 +171,24 @@ class A2CDDPGTrainer:
         
         return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item()
 
-    def select_action(self, state, idx_stop=None, test=False):
+    def run_policy(self, state, hidden, idx_stop=None, test=False):
         self.actor.eval()
         with torch.no_grad():
-            action, _, _ = self.actor(state, idx_stop, not test)
+            action, _, _, hidden = self.actor(state, hidden, idx_stop, not test)
         self.actor.train()
-        return action
+        return action, hidden
     
-    def save_experience(self, ob):
+    def save_experience(self, ob, hidden):
         for k, v in ob.items():
             if isinstance(v, torch.Tensor):
                 ob[k] = ob[k].clone().detach().cpu()
-                
+        
+        if hidden is not None:  
+            hidden = hidden.clone().detach().cpu()      
+            ob['hidden'] = hidden
+        else:
+            ob['hidden'] = [1] # dummmy hidden state
+
         for i in range(ob.shape[0]):
             self.buffer.store(ob[i])
     

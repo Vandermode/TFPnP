@@ -65,6 +65,7 @@ class Evaluator(object):
     
 def eval_single(env, data, policy, max_step, loop_penalty, metric):                    
     observation = env.reset(data=data)
+    hidden = policy.init_state()
     _, output_init, gt = env.get_images(observation)
     psnr_init = metric(output_init[0], gt[0])
     
@@ -77,7 +78,7 @@ def eval_single(env, data, policy, max_step, loop_penalty, metric):
     
     ob = observation
     while episode_steps < max_step:
-        action = policy(env.get_policy_state(ob), test=True)
+        action,_,_,hidden = policy(env.get_policy_state(ob), hidden, idx_stop=None, stochastic=False)
         
         # since batch size = 1, ob and ob_masked are always identicial
         ob, _, reward, done, _ = env.step(action) 
