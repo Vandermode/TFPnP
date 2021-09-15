@@ -48,7 +48,7 @@ class TrainOptions:
         self.initialized = False
 
     def initialize(self):
-        self.parser.add_argument('--exp', default='baseline', type=str, help='name of experiment')
+        self.parser.add_argument('--exp', default='baseline2', type=str, help='name of experiment')
         self.parser.add_argument('--warmup', default=10, type=int, help='timestep without training but only filling the replay memory')
         self.parser.add_argument('--discount', default=0.99, type=float, help='discount factor')
         self.parser.add_argument('--rmsize', default=100, type=int, help='replay memory size')

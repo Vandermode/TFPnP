@@ -34,6 +34,16 @@ class GaussianBlur():
     def kernel(self):
         return self.k
  
+class GaussianNoise(object):
+    def __init__(self, sigma):
+        np.random.seed(seed=0)  # for reproducibility
+        self.sigma = sigma
+
+    def __call__(self, img):
+        img_L = img + np.random.normal(0, self.sigma, img.shape)
+        return img_L
+    
+
 class HSIDeblurDataset(Dataset):
     def __init__(self, datadir, training=True, target_size=None):
         self.datadir = datadir
@@ -42,6 +52,7 @@ class HSIDeblurDataset(Dataset):
         #TODO: the following line is important, if using entire dataset, training will be failed
         self.fns = self.fns[10:] if training else self.fns[:10] 
         self.blur = GaussianBlur()
+        # self.awgn = GaussianNoise(10/255)
         
     def __getitem__(self, index):
         index = index % len(self.fns)
@@ -52,6 +63,7 @@ class HSIDeblurDataset(Dataset):
             
         gt = single2tensor4(target)
         low = self.blur(target)
+        # low = self.awgn(low)
         k = np.expand_dims(self.blur.kernel(), 2)
         img_L_tensor, k_tensor = single2tensor4(low), single2tensor4(k)
         FB, FBC, F2B, FBFy = sr.pre_calculate(img_L_tensor, k_tensor, 1)

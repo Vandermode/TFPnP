@@ -57,7 +57,7 @@ class HSIInpaintingDataset(ImageDir):
         super().__init__(datadir, training=training)
         self.target_size = target_size
         self.degrade = FastHyStripe()
-        self.awgn = GaussianNoise(30)
+        self.awgn = GaussianNoise(30/255)
         
     def _get_data(self, path):
         target = loadmat(path)['gt']
@@ -67,8 +67,8 @@ class HSIInpaintingDataset(ImageDir):
         gt = single2tensor4(target)
         
         low = target
-        # low = self.awgn(low)
         low, mask = self.degrade(low)
+        low = self.awgn(low)
         
         # x = Interpolation_OLRT_3D(low, mask)
         low = single2tensor4(low)

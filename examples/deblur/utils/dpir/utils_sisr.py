@@ -266,7 +266,7 @@ def data_solution_deblur(x, FB, FBC, F2B, FBFy, alpha, sf):
 # --------------------------------
 
 def data_solution_admm_sr(xtilde, FB, FBC, F2B, FBFy, rho, sf):
-    rho = rho / 2 + 1e-8
+    rho = rho / 2
     FR = FBFy + torch.rfft(rho*xtilde, 3, onesided=False)
     x1 = cmul(FB, FR)
     FBR = torch.mean(splits(x1, sf), dim=-1, keepdim=False)

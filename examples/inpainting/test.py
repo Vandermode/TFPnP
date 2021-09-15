@@ -15,15 +15,15 @@ import utils.dpir.utils_pnp as pnp
 from tfpnp.utils.metric import psnr_qrnn3d
 from tfpnp.policy.resnet import ResNetActor_HSI
 from tfpnp.pnp.denoiser import GRUNetDenoiser
-from tfpnp.trainer import evaluator
+from tfpnp.eval import evaluator
 from tfpnp.env import PnPEnv
 from tfpnp.utils.visualize import save_img, seq_plot
 
 class Evaluator:
-    def __init__(self, policy_network, env:PnPEnv, savedir=None):
+    def __init__(self, policy_network, env:PnPEnv, max_step, savedir=None):
         self.policy_network = policy_network
         self.env = env
-        self.max_step = 10
+        self.max_step = max_step
         self.psnr_fn = partial(peak_signal_noise_ratio, data_range=255)
         self.savedir = savedir
         
@@ -96,7 +96,7 @@ class Evaluator:
         
         rhos, sigmas = pnp.get_rho_sigma_admm(sigma=max(0.255/255., 0),
                                             iter_num=iter_num,
-                                            modelSigma1=35, modelSigma2=10,
+                                            modelSigma1=45, modelSigma2=10,
                                             w=1,
                                             lam=0.23)
 
@@ -130,15 +130,15 @@ if __name__ == '__main__':
                                               num_workers=0, pin_memory=True)
     
     policy_network = ResNetActor_HSI(187, 1).to(device)
-    policy_network.load_state_dict(torch.load('checkpoints/baseline/actor_0000199.pkl'))
+    policy_network.load_state_dict(torch.load('checkpoints/sigma0/actor_0000199.pkl'))
     
     denoiser = GRUNetDenoiser().to(device)
     solver = InpaintingADMMPnPSolver(denoiser)
     
-    iter_num = 15
+    iter_num = 40
     env = HSIInpaintingEnv(None, solver, max_step=iter_num, device=device)
     
-    evaluator = Evaluator(policy_network, env, savedir='log/baseline/')
+    evaluator = Evaluator(policy_network, env, iter_num, savedir='log/baseline/')
     
     psnr_inputs, psnr_finisheds, psnr_fixeds, psnr_bests = [], [], [], []
     for data in val_loader:
