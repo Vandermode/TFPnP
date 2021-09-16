@@ -187,7 +187,7 @@ class A2CDDPGTrainer:
             hidden = hidden.clone().detach().cpu()      
             ob['hidden'] = hidden
         else:
-            ob['hidden'] = [1] # dummmy hidden state
+            ob['hidden'] = [1] # dummmy hidden state for non-rnn actor
 
         for i in range(ob.shape[0]):
             self.buffer.store(ob[i])
