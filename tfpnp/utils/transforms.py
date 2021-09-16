@@ -12,9 +12,11 @@ from torch_radon import Radon
 
 class Radon_norm(Radon):
     def __init__(self, resolution, angles, det_count=-1, det_spacing=1.0, clip_to_circle=False, opnorm=None):
-        super(Radon_norm, self).__init__(resolution, angles, det_count, det_spacing, clip_to_circle)
+        super(Radon_norm, self).__init__(resolution, angles,
+                                         det_count, det_spacing, clip_to_circle)
         if opnorm is None:
-            normal_op = lambda x: super(Radon_norm, self).backward(super(Radon_norm, self).forward(x))
+            def normal_op(x): return super(Radon_norm, self).backward(
+                super(Radon_norm, self).forward(x))
             x = torch.randn(1, 1, resolution, resolution).cuda()
             opnorm = power_method_opnorm(normal_op, x, n_iter=10)
         self.opnorm = opnorm
@@ -54,7 +56,7 @@ class RadonGenerator:
             self.opnorms[key] = opnorm
 
         return radon
-        
+
 
 def power_method_opnorm(normal_op, x, n_iter=10):
     def _normalize(x):
@@ -63,7 +65,7 @@ def power_method_opnorm(normal_op, x, n_iter=10):
         norm = torch.norm(x, dim=1)
         x /= norm.view(-1, 1)
         return x.view(*size), torch.max(norm).item()
-    
+
     with torch.no_grad():
         x, _ = _normalize(x)
 
@@ -77,12 +79,14 @@ def power_method_opnorm(normal_op, x, n_iter=10):
 def real2complex(x):
     return torch.stack([x, torch.zeros_like(x)], dim=4)
 
+
 def complex2real(x):
     return x[..., 0]
 
+
 def complex2channel(x):
     N, C, H, W, _ = x.shape
-    # N C H W 2 -> N 2C H W 
+    # N C H W 2 -> N 2C H W
     temp = x
     x = x.permute(0, 1, 4, 2, 3).contiguous()
     x = x.view(N, C*2, H, W)
@@ -327,11 +331,11 @@ def complex_mul(x1, x2):
     Compute multiplication of two complex numbers
     """
     assert x1.size(-1) == 2 and x2.size(-1) == 2
-    
+
     res = torch.stack(
-        (x1[...,0]*x2[...,0]-x1[...,1]*x2[...,1], 
-        x1[...,0]*x2[...,1] + x1[...,1]*x2[...,0]), -1)
-    
+        (x1[..., 0]*x2[..., 0]-x1[..., 1]*x2[..., 1],
+         x1[..., 0]*x2[..., 1] + x1[..., 1]*x2[..., 0]), -1)
+
     return res
 
 
@@ -385,8 +389,10 @@ if __name__ == '__main__':
     from os.path import join
 
     maskdir = '/media/kaixuan/DATA/Papers/Code/Data/MRI/masks'
-    sampling_masks = ['radial_128_2', 'radial_128_4', 'radial_128_8']  # different masks
-    obs_masks = [loadmat(join(maskdir, '{}.mat'.format(sampling_mask))).get('mask') for sampling_mask in sampling_masks] 
+    sampling_masks = ['radial_128_2', 'radial_128_4',
+                      'radial_128_8']  # different masks
+    obs_masks = [loadmat(join(maskdir, '{}.mat'.format(sampling_mask))).get(
+        'mask') for sampling_mask in sampling_masks]
     mask = torch.from_numpy(obs_masks[2])[None].bool()
 
     def csmri_normal_op(x):
@@ -397,7 +403,7 @@ if __name__ == '__main__':
 
     # device = torch.device("cpu")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    x = torch.randn((1, 1, 128, 128, 2), device=device)    
+    x = torch.randn((1, 1, 128, 128, 2), device=device)
 
     opnorm = power_method_opnorm(csmri_normal_op, x, 10)
     print(opnorm)  # nearly equal to 1

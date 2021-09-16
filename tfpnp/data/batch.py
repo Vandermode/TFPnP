@@ -516,7 +516,8 @@ class Batch:
                 self.__dict__[k] = Batch.stack(v, axis)
             else:  # most often case is np.ndarray
                 try:
-                    self.__dict__[k] = _to_array_with_correct_type(np.stack(v, axis))
+                    self.__dict__[k] = _to_array_with_correct_type(
+                        np.stack(v, axis))
                 except ValueError:
                     warnings.warn("You are using tensors with different shape,"
                                   " fallback to dtype=object by default.")

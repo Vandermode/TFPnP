@@ -9,28 +9,32 @@ import sys
 def conv3x3(in_planes, out_planes, stride=1):
     return weightNorm(nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True))
 
+
 class TReLU(nn.Module):
     def __init__(self):
         super(TReLU, self).__init__()
         self.alpha = nn.Parameter(torch.FloatTensor(1), requires_grad=True)
         self.alpha.data.fill_(0)
-        
+
     def forward(self, x):
         x = F.relu(x - self.alpha) + self.alpha
         return x
 
+
 def cfg(depth):
     depth_lst = [18, 34, 50, 101, 152]
-    assert (depth in depth_lst), "Error : Resnet depth should be either 18, 34, 50, 101, 152"
+    assert (
+        depth in depth_lst), "Error : Resnet depth should be either 18, 34, 50, 101, 152"
     cf_dict = {
-        '18': (BasicBlock, [2,2,2,2]),
-        '34': (BasicBlock, [3,4,6,3]),
-        '50': (Bottleneck, [3,4,6,3]),
-        '101':(Bottleneck, [3,4,23,3]),
-        '152':(Bottleneck, [3,8,36,3]),
+        '18': (BasicBlock, [2, 2, 2, 2]),
+        '34': (BasicBlock, [3, 4, 6, 3]),
+        '50': (Bottleneck, [3, 4, 6, 3]),
+        '101': (Bottleneck, [3, 4, 23, 3]),
+        '152': (Bottleneck, [3, 8, 36, 3]),
     }
 
     return cf_dict[str(depth)]
+
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -43,7 +47,8 @@ class BasicBlock(nn.Module):
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
-                weightNorm(nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=True)),
+                weightNorm(nn.Conv2d(in_planes, self.expansion*planes,
+                                     kernel_size=1, stride=stride, bias=True)),
             )
         self.relu_1 = TReLU()
         self.relu_2 = TReLU()
@@ -56,14 +61,18 @@ class BasicBlock(nn.Module):
 
         return out
 
+
 class Bottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1):
         super(Bottleneck, self).__init__()
-        self.conv1 = weightNorm(nn.Conv2d(in_planes, planes, kernel_size=1, bias=True))
-        self.conv2 = weightNorm(nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=True))
-        self.conv3 = weightNorm(nn.Conv2d(planes, self.expansion*planes, kernel_size=1, bias=True))
+        self.conv1 = weightNorm(
+            nn.Conv2d(in_planes, planes, kernel_size=1, bias=True))
+        self.conv2 = weightNorm(
+            nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=True))
+        self.conv3 = weightNorm(
+            nn.Conv2d(planes, self.expansion*planes, kernel_size=1, bias=True))
         self.relu_1 = TReLU()
         self.relu_2 = TReLU()
         self.relu_3 = TReLU()
@@ -71,7 +80,8 @@ class Bottleneck(nn.Module):
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != self.expansion*planes:
             self.shortcut = nn.Sequential(
-                weightNorm(nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=True)),
+                weightNorm(nn.Conv2d(in_planes, self.expansion*planes,
+                                     kernel_size=1, stride=stride, bias=True)),
             )
 
     def forward(self, x):
@@ -82,6 +92,7 @@ class Bottleneck(nn.Module):
         out = self.relu_3(out)
 
         return out
+
 
 class ResNet_wobn(nn.Module):
     def __init__(self, num_inputs, depth, num_outputs):

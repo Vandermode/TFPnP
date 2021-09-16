@@ -1,1 +1,1 @@
-from .a2cddpg.trainer import A2CDDPGTrainer
+from .mddpg.trainer import MDDPGTrainer

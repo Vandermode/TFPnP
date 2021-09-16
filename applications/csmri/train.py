@@ -13,7 +13,7 @@ from solver import ADMMSolver_CSMRI
 from tfpnp.pnp.denoiser import UNetDenoiser2D
 from tfpnp.policy.resnet import ResNetActor
 from tfpnp.trainer import A2CDDPGTrainer
-from tfpnp.trainer.a2cddpg.critic import ResNet_wobn
+from tfpnp.trainer.mddpg.critic import ResNet_wobn
 from tfpnp.eval import Evaluator
 
 torch.autograd.set_detect_anomaly(True)

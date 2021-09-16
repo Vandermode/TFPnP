@@ -1,12 +1,14 @@
-import torch 
+import torch
 from PIL import Image
 import math
 
+
 def center_crop(img, target_size):
     # img: [H,W,C]
-    w,h = target_size
+    w, h = target_size
     wo, ho, _ = img.shape
     return img[(wo-w)//2:(wo-w)//2+w, (ho-h)//2:(ho-h)//2+h, :]
+
 
 def scale_width(img, target_width):
     ow, oh = img.size
@@ -17,6 +19,7 @@ def scale_width(img, target_width):
     h = math.ceil(h / 2.) * 2  # round up to even
     return img.resize((w, h), Image.BICUBIC)
 
+
 def scale_height(img, target_height):
     ow, oh = img.size
     if (oh == target_height):
@@ -25,9 +28,9 @@ def scale_height(img, target_height):
     w = int(target_height * ow / oh)
     w = math.ceil(w / 2.) * 2  # round up to even
     return img.resize((w, h), Image.BICUBIC)
- 
+
 
 def dict_to_device(dic, device):
-    dic = {k: v.to(device) if type(v) == torch.Tensor else v for k, v in dic.items()} 
+    dic = {k: v.to(device) if type(
+        v) == torch.Tensor else v for k, v in dic.items()}
     return dic
- 
