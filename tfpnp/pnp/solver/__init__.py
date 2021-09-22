@@ -1,1 +1,1 @@
-from .base import PnPSolver
+from .base import PnPSolver, ADMMSolver

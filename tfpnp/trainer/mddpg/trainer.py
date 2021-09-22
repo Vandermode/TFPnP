@@ -14,21 +14,15 @@ https://www.jianshu.com/p/f9e7140ce19d
 """
 
 
-def lr_scheduler(step):
-    if step < 10000:
-        return {'critic': 3e-4, 'actor': 1e-3}
-    else:
-        return {'critic': 1e-4, 'actor': 3e-4}
-
-
 class MDDPGTrainer:
-    def __init__(self, opt, env: PnPEnv, policy_network, critic, critic_target, device,
+    def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler, device,
                  evaluator=None, writer: SummaryWriter = None, logger=None):
         self.opt = opt
         self.env = env
-        self.actor = policy_network
+        self.actor = actor
         self.critic = critic
         self.critic_target = critic_target
+        self.lr_scheduler = lr_scheduler
         self.evaluator = evaluator
         self.writer = writer
         self.device = device
@@ -87,13 +81,12 @@ class MDDPGTrainer:
 
                 if (epoch % self.opt.save_freq == 0) or (epoch == self.opt.epochs):
                     self.evaluator.eval(self.actor, step)
-                    self.logger.log('Saving model at Step_{:07d}...'.format(
-                        step), color=COLOR.RED)
+                    self.logger.log('Saving model at Step_{:07d}...'.format(step), color=COLOR.RED)
                     self.save_model(self.opt.output, step)
 
     def _updaet_policy(self, episode, step):
         tot_Q, tot_value_loss, tot_dist_entropy = 0, 0, 0
-        lr = lr_scheduler(step)
+        lr = self.lr_scheduler(step)
 
         for _ in range(self.opt.episode_train_times):
             samples = self.buffer.sample_batch(self.opt.env_batch)
@@ -111,10 +104,9 @@ class MDDPGTrainer:
             self.writer.add_scalar('train/critic_lr', lr['critic'], step)
             self.writer.add_scalar('train/actor_lr', lr['actor'], step)
             self.writer.add_scalar('train/Q', mean_Q, step)
-            self.writer.add_scalar('train/dist_entropy',
-                                   mean_dist_entropy, step)
+            self.writer.add_scalar('train/dist_entropy', mean_dist_entropy, step)
             self.writer.add_scalar('train/critic_loss', mean_value_loss, step)
-
+        
         self.logger.log('#{}: steps: {} | Q: {:.2f} | dist_entropy: {:.2f} | critic_loss: {:.2f}'
                         .format(episode, step, mean_Q, mean_dist_entropy, mean_value_loss))
 
@@ -132,7 +124,7 @@ class MDDPGTrainer:
         policy_state = self.env.get_policy_state(state)
 
         action, action_log_prob, dist_entropy, _ = self.actor(
-            policy_state, hidden)
+            policy_state, None, True, hidden)
 
         state2, reward = self.env.forward(state, action)
         reward -= self.opt.loop_penalty
@@ -177,11 +169,11 @@ class MDDPGTrainer:
 
         return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item()
 
-    def run_policy(self, state, hidden, idx_stop=None, test=False):
+    def run_policy(self, state, hidden=None, idx_stop=None, test=False):
         self.actor.eval()
         with torch.no_grad():
             action, _, _, hidden = self.actor(
-                state, hidden, idx_stop, not test)
+                state, idx_stop, not test, hidden)
         self.actor.train()
         return action, hidden
 

@@ -1,9 +1,9 @@
+import ipdb
 import torch
 from tfpnp.data.batch import Batch
 from tfpnp.env import PnPEnv
 from tfpnp.utils.transforms import complex2channel, complex2real
 
-BOOL = True if float(torch.__version__[:3]) >= 1.3 else False
 
 class CSMRIEnv(PnPEnv):
     def __init__(self, data_loader, solver, max_step, device):

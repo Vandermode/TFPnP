@@ -117,7 +117,7 @@ class PnPEnv(DifferentiableEnv):
         with torch.no_grad():
             def f(x): return x[self.idx_left, ...]
             inputs = (f(self.state['solver']), map(
-                f, self.solver.filter_additional_input(self.state)))
+                f, self.solver.filter_aux_inputs(self.state)))
             parameters = self.solver.filter_hyperparameter(action)
             solver_state = self.solver(inputs, parameters)
 

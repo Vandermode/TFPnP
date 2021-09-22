@@ -10,8 +10,6 @@ from tfpnp.utils import transforms
 from tfpnp.utils.transforms import complex2real
 
 
-BOOL = True if float(torch.__version__[:3]) >= 1.3 else False
-
 class CSMRIDataset(Dataset):
     def __init__(self, datadir, fns, masks, noise_model=None, size=None, target_size=None, repeat=1):
         super(CSMRIDataset, self).__init__()
@@ -25,9 +23,7 @@ class CSMRIDataset(Dataset):
 
     def __getitem__(self, index):
         mask = self.masks[1]
-
-        if BOOL:
-            mask = mask.astype(np.bool)
+        mask = mask.astype(np.bool)
         
         sigma_n = 0
 
@@ -77,6 +73,7 @@ class CSMRIDataset(Dataset):
             return len(self.fns) * self.repeat
         else:
             return self.size
+
 
 class CSMRIEvalDataset(Dataset):
     def __init__(self, datadir, fns=None):

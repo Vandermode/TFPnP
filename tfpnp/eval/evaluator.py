@@ -1,4 +1,6 @@
 import os
+import ipdb
+import torch
 from os.path import join
 
 import numpy as np
@@ -19,7 +21,9 @@ class Evaluator(object):
         self.savedir = savedir
         self.metric = metric
 
+    @torch.no_grad()
     def eval(self, policy, step):
+        policy.eval()
         for name, val_loader in self.val_loaders.items():
             metric_tracker = MetricTracker()
             for index, data in enumerate(val_loader):
@@ -83,9 +87,8 @@ def eval_single(env, data, policy, max_step, loop_penalty, metric):
 
     ob = observation
     while episode_steps < max_step:
-        action, _, _, hidden = policy(env.get_policy_state(
-            ob), hidden, idx_stop=None, stochastic=False)
-
+        action, _, _, hidden = policy(env.get_policy_state(ob), idx_stop=None, train=False, hidden=hidden)
+                
         # since batch size = 1, ob and ob_masked are always identicial
         ob, _, reward, done, _ = env.step(action)
 
