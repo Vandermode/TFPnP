@@ -2,16 +2,13 @@ import torch
 import torch.nn as nn
 from torch.optim.adam import Adam
 from tensorboardX.writer import SummaryWriter
+import time
 
 from ...data.batch import Batch
 from ...env import PnPEnv
 from ...utils.misc import prRed, prBlack, soft_update, hard_update
 from ...utils.rpm import ReplayMemory
 from ...utils.log import Logger, COLOR
-
-"""[summary]
-https://www.jianshu.com/p/f9e7140ce19d
-"""
 
 
 class MDDPGTrainer:
@@ -45,12 +42,12 @@ class MDDPGTrainer:
         hidden = self.actor.init_state()
 
         episode, episode_step = 0, 0
-
+        interval_time = time.time()
+        
         for iter in range(1, self.train_iters+1):
             # select a action
             # TODO: 1. sample from action space at the first few steps for better exploration. 2. Noise action
-            action, hidden = self.run_policy(
-                self.env.get_policy_state(ob), hidden)
+            action, hidden = self.run_policy(self.env.get_policy_state(ob), hidden)
 
             # step the env
             _, ob2_masked, _, done, _ = self.env.step(action)
@@ -64,27 +61,30 @@ class MDDPGTrainer:
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
                 if iter > self.opt.warmup:
+                    interval_time = time.time() - interval_time 
                     if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
                         self.evaluator.eval(self.actor, iter)
                         self.save_model(self.opt.output)
 
-                    self._update_policy(episode, iter)
+                    self._update_policy(episode, iter, interval_time)
 
                 ob = self.env.reset()
                 episode += 1
                 episode_step = 0
-
+                interval_time = time.time()
+                
             if (iter % self.opt.save_freq == 0 and iter != 0) or iter == self.train_iters:
                 self.evaluator.eval(self.actor, iter)
                 self.logger.log('Saving model at Iter_{:07d}...'.format(iter), color=COLOR.RED)
                 self.save_model(self.opt.output, iter)
-            
 
-    def _update_policy(self, episode, step):
+    def _update_policy(self, episode, step, interval_time):
         self.actor.train()
         tot_Q, tot_value_loss, tot_dist_entropy = 0, 0, 0
         lr = self.lr_scheduler(step)
-
+        
+        train_time = time.time()
+        
         for _ in range(self.opt.episode_train_times):
             samples = self.buffer.sample_batch(self.opt.env_batch)
             Q, value_loss, dist_entropy = self._update(samples=samples, lr=lr)
@@ -92,7 +92,9 @@ class MDDPGTrainer:
             tot_Q += Q
             tot_value_loss += value_loss
             tot_dist_entropy += dist_entropy
-
+            
+        train_time = time.time() - train_time
+        
         mean_Q = tot_Q / self.opt.episode_train_times
         mean_dist_entropy = tot_dist_entropy / self.opt.episode_train_times
         mean_value_loss = tot_value_loss / self.opt.episode_train_times
@@ -103,9 +105,9 @@ class MDDPGTrainer:
             self.writer.add_scalar('train/Q', mean_Q, step)
             self.writer.add_scalar('train/dist_entropy', mean_dist_entropy, step)
             self.writer.add_scalar('train/critic_loss', mean_value_loss, step)
-        
-        self.logger.log('#{}: steps: {} | Q: {:.2f} | dist_entropy: {:.2f} | critic_loss: {:.2f}'
-                        .format(episode, step, mean_Q, mean_dist_entropy, mean_value_loss))
+
+        self.logger.log('#{}: steps: {} | interval_time: {:.2f} | train_time: {:.2f} | Q: {:.2f} | dist_entropy: {:.2f} | critic_loss: {:.2f}'
+                        .format(episode, step, interval_time, train_time, mean_Q, mean_dist_entropy, mean_value_loss))
 
     def _update(self, samples, lr: dict):
         # update learning rate
@@ -120,8 +122,7 @@ class MDDPGTrainer:
 
         policy_state = self.env.get_policy_state(state)
 
-        action, action_log_prob, dist_entropy, _ = self.actor(
-            policy_state, None, True, hidden)
+        action, action_log_prob, dist_entropy, _ = self.actor(policy_state, None, True, hidden)
 
         state2, reward = self.env.forward(state, action)
         reward -= self.opt.loop_penalty
