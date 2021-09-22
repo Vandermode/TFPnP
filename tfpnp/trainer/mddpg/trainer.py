@@ -28,7 +28,7 @@ class MDDPGTrainer:
         self.device = device
         self.logger = Logger() if logger is None else logger
 
-        self.total_steps = opt.epochs * opt.steps_per_epoch
+        self.train_iters = opt.train_iters
 
         self.buffer = ReplayMemory(opt.rmsize * opt.max_step)
 
@@ -45,9 +45,8 @@ class MDDPGTrainer:
         hidden = self.actor.init_state()
 
         episode, episode_step = 0, 0
-        epoch = 0
 
-        for step in range(self.total_steps):
+        for iter in range(1, self.train_iters+1):
             # select a action
             # TODO: 1. sample from action space at the first few steps for better exploration. 2. Noise action
             action, hidden = self.run_policy(
@@ -64,27 +63,25 @@ class MDDPGTrainer:
 
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
-                if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
-                    self.evaluator.eval(self.actor, step)
+                if iter > self.opt.warmup:
+                    if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
+                        self.evaluator.eval(self.actor, iter)
+                        self.save_model(self.opt.output)
 
-                if step > self.opt.warmup:
-                    self._updaet_policy(episode, step)
+                    self._update_policy(episode, iter)
 
                 ob = self.env.reset()
                 episode += 1
                 episode_step = 0
 
-            # end of epoch handling
-            if (step + 1) % self.opt.steps_per_epoch == 0:
-                epoch = (step+1) // self.opt.steps_per_epoch
-                epoch += 1
+            if (iter % self.opt.save_freq == 0 and iter != 0) or iter == self.train_iters:
+                self.evaluator.eval(self.actor, iter)
+                self.logger.log('Saving model at Iter_{:07d}...'.format(iter), color=COLOR.RED)
+                self.save_model(self.opt.output, iter)
+            
 
-                if (epoch % self.opt.save_freq == 0) or (epoch == self.opt.epochs):
-                    self.evaluator.eval(self.actor, step)
-                    self.logger.log('Saving model at Step_{:07d}...'.format(step), color=COLOR.RED)
-                    self.save_model(self.opt.output, step)
-
-    def _updaet_policy(self, episode, step):
+    def _update_policy(self, episode, step):
+        self.actor.train()
         tot_Q, tot_value_loss, tot_dist_entropy = 0, 0, 0
         lr = self.lr_scheduler(step)
 
@@ -198,7 +195,7 @@ class MDDPGTrainer:
                 batch[k] = batch[k].to(self.device)
         return batch
 
-    def save_model(self, path, step):
+    def save_model(self, path, step=None):
         if step is None:
             torch.save(self.actor.state_dict(), '{}/actor.pkl'.format(path))
             torch.save(self.critic.state_dict(), '{}/critic.pkl'.format(path))

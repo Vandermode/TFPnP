@@ -45,7 +45,7 @@ def main(opt):
     # val_datasets = [CSMRIEvalDataset(val_root, fns=['Bust.mat']) for val_root in val_roots]
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=opt.env_batch, shuffle=False,
+        train_dataset, batch_size=opt.env_batch, shuffle=True,
         num_workers=opt.num_workers, pin_memory=True, drop_last=True)
 
     val_loaders = [torch.utils.data.DataLoader(
