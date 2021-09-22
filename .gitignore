@@ -9,3 +9,4 @@ checkpoints
 tfpnp/pnp/denoiser/pretrained
 log
 data
+*egg*
