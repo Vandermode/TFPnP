@@ -166,11 +166,10 @@ class MDDPGTrainer:
 
         return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item()
 
-    def run_policy(self, state, hidden=None, idx_stop=None, test=False):
+    def run_policy(self, state, hidden=None):
         self.actor.eval()
         with torch.no_grad():
-            action, _, _, hidden = self.actor(
-                state, idx_stop, not test, hidden)
+            action, _, _, hidden = self.actor(state, idx_stop=None, train=False, hidden=hidden)
         self.actor.train()
         return action, hidden
 
