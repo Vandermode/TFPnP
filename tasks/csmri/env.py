@@ -1,4 +1,3 @@
-import ipdb
 import torch
 from tfpnp.data.batch import Batch
 from tfpnp.env import PnPEnv

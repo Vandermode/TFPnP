@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import ipdb
 import torch
 from tensorboardX import SummaryWriter
 from scipy.io import loadmat

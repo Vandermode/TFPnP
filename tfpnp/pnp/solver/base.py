@@ -1,4 +1,3 @@
-import ipdb
 import torch.nn as nn
 import torch
 from tfpnp.pnp.denoiser import Denoiser
