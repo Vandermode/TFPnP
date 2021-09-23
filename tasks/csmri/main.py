@@ -36,9 +36,7 @@ def main(opt):
     val_roots = [data_dir / 'Medical7_2020' / sampling_mask / str(sigma_n_eval) for sampling_mask in sampling_masks]
     masks = [loadmat(mask_dir / f'{sampling_mask}.mat').get('mask') for sampling_mask in sampling_masks]
 
-    writer = SummaryWriter(log_dir)
-
-    train_dataset = CSMRIDataset(train_root, fns=None, masks=masks, noise_model=noise_model)
+    train_dataset = CSMRIDataset(train_root, fns=None, masks=masks, noise_model=noise_model, repeat=12*100)
     val_datasets = [CSMRIEvalDataset(val_root, fns=None) for val_root in val_roots]
     # val_datasets = [CSMRIEvalDataset(val_root, fns=['Bust.mat']) for val_root in val_roots]
 
@@ -53,16 +51,18 @@ def main(opt):
     val_names = [f'radial_128_2_{sigma_n_eval}', f'radial_128_4_{sigma_n_eval}', f'radial_128_8_{sigma_n_eval}']        
 
     val_loaders = dict(zip(val_names, val_loaders))
-
+        
     base_dim = 6    
+    actor = create_policy_network(opt, base_dim).to(device)  # policy network
     denoiser = create_denoiser(opt).to(device)
     solver = create_solver_csmri(opt, denoiser).to(device)
-    actor = create_policy_network(opt, base_dim).to(device)  # policy network
     num_var = solver.num_var
     
     if torch.cuda.device_count() > 1:
         solver = DataParallelWithCallback(solver)
 
+    writer = SummaryWriter(log_dir)
+    
     env = CSMRIEnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
     eval_env = CSMRIEnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
     evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)

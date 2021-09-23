@@ -33,10 +33,11 @@ class GaussianModelD:  # discrete noise levels
 
         sigma = sigma / 255.
         # y = x + np.random.randn(*x.shape).astype(np.float32) * sigma
-        y = x + torch.randn(*x.shape) * sigma            
-            
+        y = x + torch.randn(*x.shape) * sigma      
+              
+        sigma = torch.ones_like(y) * sigma
         # return y.astype(np.float32), np.float32(sigma)
-        return y, np.float32(sigma)
+        return y, sigma
 
 
 class GaussianModelP:  # noise percentages

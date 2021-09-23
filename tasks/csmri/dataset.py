@@ -16,6 +16,8 @@ class CSMRIDataset(Dataset):
         super(CSMRIDataset, self).__init__()
         self.datadir = datadir
         self.fns = fns or [im for im in os.listdir(self.datadir) if im.endswith(".jpg") or im.endswith(".bmp") or im.endswith(".png") or im.endswith(".tif")]      
+        self.fns = sorted(self.fns)
+
         self.masks = masks
         self.noise_model = noise_model
         self.size = size
@@ -23,7 +25,7 @@ class CSMRIDataset(Dataset):
         self.target_size = target_size
 
     def __getitem__(self, index):
-        mask = self.masks[1]
+        mask = self.masks[np.random.randint(0, len(self.masks))]
         mask = mask.astype(np.bool)
         
         sigma_n = 0

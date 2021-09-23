@@ -16,7 +16,7 @@ class CSMRIEnv(PnPEnv):
             complex2real(state.ATy0),
             state.mask,
             state.T,
-            state.sigma_n,
+            complex2real(state.sigma_n),
         ], 1)
     
     def get_eval_state(self, state):
