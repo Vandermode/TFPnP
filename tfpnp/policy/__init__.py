@@ -7,7 +7,8 @@ _solver_map = {
     'pg': ResNetActor_PG,
     'apg': ResNetActor_APG,
     'redadmm': ResNetActor_RED,
-    'amp': ResNetActor_AMP
+    'amp': ResNetActor_AMP,
+    'iadmm': ResNetActor_IADMM
 }
 
 
