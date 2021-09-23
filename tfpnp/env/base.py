@@ -98,11 +98,12 @@ class PnPEnv(DifferentiableEnv):
         data.update({'solver': solver_state})
 
         # construct state of time step
-        B, _, W, H = data['gt'].shape
+        B, _, W, H = data['gt'].shape        
+        sigma_n = torch.ones_like(data['gt']) * data['sigma_n'].view(B, 1, 1, 1)
         T = torch.ones([B, 1, W, H], dtype=torch.float32,
                        device=self.device) * self.cur_step / self.max_episode_step
-        data.update({'T': T})
-
+        data.update({'T': T, 'sigma_n': sigma_n})
+        
         self.state = data
         self.idx_left = torch.arange(0, B).to(self.device)
         self.last_metric = self._compute_metric()

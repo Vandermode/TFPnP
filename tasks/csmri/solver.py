@@ -6,14 +6,14 @@ from tfpnp.utils import transforms
 
 
 # decorator
-def complex2real(func):
+def complex2real_decorator(func):
     def real_func(*args, **kwargs):
         return transforms.complex2real(func(*args, **kwargs))
     return real_func
 
 
 class CSMRIMixin:
-    @complex2real
+    @complex2real_decorator
     def get_output(self, state):
         return super().get_output(state)
 
@@ -38,11 +38,11 @@ class ADMMSolver_CSMRI(CSMRIMixin, ADMMSolver):
 
         # infer iter_num from provided hyperparameters
         if iter_num is None:
-            iter_num = mu.shape[-1]
+            iter_num = sigma_d.shape[-1]
         
         for i in range(iter_num):
             # x step
-            x = transforms.real2complex(self.denoiser.denoise(transforms.complex2real(z - u), sigma_d[:, i]))  # plug-and-play proximal mapping
+            x = transforms.real2complex(self.prox_mapping(transforms.complex2real(z - u), sigma_d[:, i]))  # plug-and-play proximal mapping
 
             # z step
             z = transforms.fft2(x + u)
@@ -75,7 +75,7 @@ class HQSSolver_CSMRI(CSMRIMixin, HQSSolver):
 
         for i in range(iter_num):
             # x step
-            x = transforms.real2complex(self.denoiser.denoise(transforms.complex2real(z), sigma_d[:, i]))  # plug-and-play proximal mapping
+            x = transforms.real2complex(self.prox_mapping(transforms.complex2real(z), sigma_d[:, i]))  # plug-and-play proximal mapping
 
             # z step
             z = transforms.fft2(x)
@@ -113,7 +113,7 @@ class PGSolver_CSMRI(CSMRIMixin, PGSolver):
             z = x - _tau * transforms.ifft2(temp)
 
             # denoising
-            x = transforms.real2complex(self.denoiser.denoise(transforms.complex2real(z), sigma_d[:, i]))
+            x = transforms.real2complex(self.prox_mapping(transforms.complex2real(z), sigma_d[:, i]))
 
         next_variables = x
 
@@ -150,7 +150,7 @@ class APGSolver_CSMRI(CSMRIMixin, APGSolver):
             
             # denoising
             x_prev = x
-            x = transforms.real2complex(self.denoiser.denoise(transforms.complex2real(z), sigma_d[:, i]))  
+            x = transforms.real2complex(self.prox_mapping(transforms.complex2real(z), sigma_d[:, i]))  
 
             # q update
             # q_prev = q
@@ -187,7 +187,7 @@ class REDADMMSolver_CSMRI(CSMRIMixin, REDADMMSolver):
             _lamda = lamda[:, i].view(N, 1, 1, 1, 1)
 
             # x step
-            x_half = transforms.real2complex(self.denoiser.denoise(transforms.complex2real(x), _sigma_d))
+            x_half = transforms.real2complex(self.prox_mapping(transforms.complex2real(x), _sigma_d))
             x = (_lamda * x_half + _mu * (z - u)) / (_mu + _lamda)
 
             # z step
@@ -231,7 +231,7 @@ class AMPSolver_CSMRI(CSMRIMixin, AMPSolver):
             _sigma_d = _sigma_d * sigma_d[:, i]
             # _sigma_d = sigma_d[:, i]
 
-            x = transforms.real2complex(self.denoiser.denoise(r, _sigma_d))
+            x = transforms.real2complex(self.prox_mapping(r, _sigma_d))
 
             epsilon = r.max() / 1000 + 1e-8
             delta = torch.randn_like(r)

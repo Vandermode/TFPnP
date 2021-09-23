@@ -43,6 +43,9 @@ class PnPSolver(nn.Module):
         """
         raise NotImplementedError
 
+    def prox_mapping(self, x, sigma):
+        return self.denoiser.denoise(x, sigma)
+
     @property
     def num_var(self):
         raise NotImplementedError
@@ -76,6 +79,14 @@ class ADMMSolver(PnPSolver):
     def filter_hyperparameter(self, action):
         return action['sigma_d'], action['mu']
 
+
+class IADMMSolver(ADMMSolver):
+    # Inexact ADMM
+    def __init__(self, denoiser):
+        super().__init__(denoiser)
+    
+    def filter_hyperparameter(self, action):
+        return action['sigma_d'], action['mu'], action['tau']
 
 class HQSSolver(PnPSolver):
     def __init__(self, denoiser):

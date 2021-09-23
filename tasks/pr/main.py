@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
+import numpy as np
 import torch
 from tensorboardX import SummaryWriter
 from scipy.io import loadmat
 from pathlib import Path
 
-from env import CSMRIEnv
-from dataset import CSMRIDataset, CSMRIEvalDataset
-from solver import create_solver_csmri
+from env import PREnv
+from dataset import PRDataset
+from solver import create_solver_pr
 
 from tfpnp.policy.sync_batchnorm import DataParallelWithCallback
 from tfpnp.policy import create_policy_network
@@ -14,7 +15,7 @@ from tfpnp.pnp import create_denoiser
 from tfpnp.trainer import MDDPGTrainer
 from tfpnp.trainer.mddpg.critic import ResNet_wobn
 from tfpnp.eval import Evaluator
-from tfpnp.utils.noise import GaussianModelD
+from tfpnp.utils.noise import PoissonModel
 from tfpnp.utils.options import Options
 
 
@@ -25,22 +26,21 @@ def main(opt):
     data_dir = Path('data')
     log_dir = Path('log') / opt.exp
     mask_dir = data_dir / 'masks'    
-
-    sigma_ns = [5, 10, 15]
-    noise_model = GaussianModelD(sigma_ns)
-    # sampling_masks = ['radial_128_8']
-    sampling_masks = ['radial_128_2', 'radial_128_4', 'radial_128_8']
-    sigma_n_eval = 15
-
-    train_root = data_dir / 'Images_128'
-    val_roots = [data_dir / 'Medical7_2020' / sampling_mask / str(sigma_n_eval) for sampling_mask in sampling_masks]
-    masks = [loadmat(mask_dir / f'{sampling_mask}.mat').get('mask') for sampling_mask in sampling_masks]
-
+    
     writer = SummaryWriter(log_dir)
 
-    train_dataset = CSMRIDataset(train_root, fns=None, masks=masks, noise_model=noise_model)
-    val_datasets = [CSMRIEvalDataset(val_root, fns=None) for val_root in val_roots]
-    # val_datasets = [CSMRIEvalDataset(val_root, fns=['Bust.mat']) for val_root in val_roots]
+    alphas = [9, 27, 81]
+    noise_model = PoissonModel(alphas)
+
+    meta_info = loadmat(mask_dir / 'pr_x4.mat')
+    obs_mask = meta_info.get('mask')
+    obs_mask = np.stack((obs_mask.real, obs_mask.imag), axis=-1)
+    
+    train_root = data_dir / 'Images_128'
+    val_root = data_dir / 'PrDeep_12'
+
+    train_dataset = PRDataset(train_root, fns=None, masks=[obs_mask], noise_model=noise_model)
+    val_datasets = [PRDataset(val_root, fns=None, masks=[obs_mask], noise_model=PoissonModel([alpha])) for alpha in alphas]
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=opt.env_batch, shuffle=True,
@@ -50,21 +50,21 @@ def main(opt):
         val_dataset, batch_size=1, shuffle=False,
         num_workers=0, pin_memory=True) for val_dataset in val_datasets]    
 
-    val_names = [f'radial_128_2_{sigma_n_eval}', f'radial_128_4_{sigma_n_eval}', f'radial_128_8_{sigma_n_eval}']        
+    val_names = [f'alpha_{alpha}' for alpha in alphas]
 
     val_loaders = dict(zip(val_names, val_loaders))
 
-    base_dim = 6    
+    base_dim = 14
     denoiser = create_denoiser(opt).to(device)
-    solver = create_solver_csmri(opt, denoiser).to(device)
+    solver = create_solver_pr(opt, denoiser).to(device)
     actor = create_policy_network(opt, base_dim).to(device)  # policy network
     num_var = solver.num_var
     
     if torch.cuda.device_count() > 1:
         solver = DataParallelWithCallback(solver)
 
-    env = CSMRIEnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
-    eval_env = CSMRIEnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
+    env = PREnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
+    eval_env = PREnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
     evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)
     
     if opt.eval:
@@ -75,10 +75,10 @@ def main(opt):
 
     def lr_scheduler(step):
         if step < 10000:
-            return {'critic': 3e-4, 'actor': 1e-3}
+            return {'critic': 1e-4, 'actor': 5e-5}
         else:
-            return {'critic': 1e-4, 'actor': 3e-4}
-        
+            return {'critic': 5e-5, 'actor': 1e-5}
+
     critic = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
     critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)        
 

@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from PIL import Image
+
 import torch 
 from torch.utils.data.dataset import Dataset
 from scipy.io import loadmat
@@ -52,7 +53,7 @@ class CSMRIDataset(Dataset):
 
         if self.noise_model is not None:
             y0, sigma_n = self.noise_model(y0)
-
+            
         y0[:, ~mask, :] = 0
 
         ATy0 = transforms.ifft2(y0)
