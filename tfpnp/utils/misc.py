@@ -8,7 +8,7 @@ USE_CUDA = torch.cuda.is_available()
 
 def torch2img255(img):
     img = to_numpy(img)
-    img = (np.clip(img, 0, 1) * 255).astype(np.uint8)
+    img = (np.clip(img, 0, 1) * 255)
     return img
 
 # https://github.com/pytorch/pytorch/issues/16885
