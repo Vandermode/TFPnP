@@ -6,7 +6,7 @@ import time
 
 from ...data.batch import Batch
 from ...env import PnPEnv
-from ...utils.misc import prRed, prBlack, soft_update, hard_update
+from ...utils.misc import soft_update, hard_update
 from ...utils.rpm import ReplayMemory
 from ...utils.log import Logger, COLOR
 
@@ -25,8 +25,6 @@ class MDDPGTrainer:
         self.device = device
         self.logger = Logger() if logger is None else logger
 
-        self.train_iters = opt.train_iters
-
         self.buffer = ReplayMemory(opt.rmsize * opt.max_step)
 
         self.optimizer_actor = Adam(self.actor.parameters())
@@ -43,8 +41,8 @@ class MDDPGTrainer:
 
         episode, episode_step = 0, 0
         interval_time = time.time()
-        
-        for iter in range(1, self.train_iters+1):
+
+        for iter in range(1, self.opt.train_iters+1):
             # select a action
             # TODO: 1. sample from action space at the first few steps for better exploration. 2. Noise action
             action, hidden = self.run_policy(self.env.get_policy_state(ob), hidden)
@@ -61,53 +59,65 @@ class MDDPGTrainer:
             # end of trajectory handling
             if done or (episode_step == self.opt.max_step):
                 if iter > self.opt.warmup:
-                    interval_time = time.time() - interval_time 
+                    interval_time = time.time() - interval_time
+
+                    result, tb_result, train_time = self._update_policy(self.opt.episode_train_times,
+                                                                        self.opt.env_batch,
+                                                                        step=iter)
+                    
+                    # handle logging of training results
+                    fmt_str = '#{}: steps: {} | interval_time: {:.2f} | train_time: {:.2f} | {}'
+                    fmt_result = ' | '.join([f'{k}: {v:.2f}' for k, v in result.items()])
+                    self.logger.log(fmt_str.format(episode, iter, interval_time, train_time, fmt_result))
+
+                    if self.writer is not None:
+                        for k, v in tb_result.items():
+                            self.writer.add_scalar(f'train/{k}', v, iter)
+
+                    # evaluate after a update
                     if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
                         self.evaluator.eval(self.actor, iter)
                         self.save_model(self.opt.output)
-
-                    self._update_policy(episode, iter, interval_time)
-
+                        
+                # reset state for next episode
                 ob = self.env.reset()
                 episode += 1
                 episode_step = 0
                 interval_time = time.time()
-                
-            if (iter % self.opt.save_freq == 0 and iter != 0) or iter == self.train_iters:
+
+            # save model
+            if (iter % self.opt.save_freq == 0 and iter != 0) or iter == self.opt.train_iters:
                 self.evaluator.eval(self.actor, iter)
                 self.logger.log('Saving model at Iter_{:07d}...'.format(iter), color=COLOR.RED)
                 self.save_model(self.opt.output, iter)
 
-    def _update_policy(self, episode, step, interval_time):
+    def _update_policy(self, train_times, env_batch, step):
         self.actor.train()
+
         tot_Q, tot_value_loss, tot_dist_entropy = 0, 0, 0
         lr = self.lr_scheduler(step)
-        
+
         train_time = time.time()
-        
-        for _ in range(self.opt.episode_train_times):
-            samples = self.buffer.sample_batch(self.opt.env_batch)
+
+        for _ in range(train_times):
+            samples = self.buffer.sample_batch(env_batch)
             Q, value_loss, dist_entropy = self._update(samples=samples, lr=lr)
 
             tot_Q += Q
             tot_value_loss += value_loss
             tot_dist_entropy += dist_entropy
-            
+
         train_time = time.time() - train_time
-        
-        mean_Q = tot_Q / self.opt.episode_train_times
-        mean_dist_entropy = tot_dist_entropy / self.opt.episode_train_times
-        mean_value_loss = tot_value_loss / self.opt.episode_train_times
 
-        if self.writer is not None:
-            self.writer.add_scalar('train/critic_lr', lr['critic'], step)
-            self.writer.add_scalar('train/actor_lr', lr['actor'], step)
-            self.writer.add_scalar('train/Q', mean_Q, step)
-            self.writer.add_scalar('train/dist_entropy', mean_dist_entropy, step)
-            self.writer.add_scalar('train/critic_loss', mean_value_loss, step)
+        mean_Q = tot_Q / train_times
+        mean_dist_entropy = tot_dist_entropy / train_times
+        mean_value_loss = tot_value_loss / train_times
 
-        self.logger.log('#{}: steps: {} | interval_time: {:.2f} | train_time: {:.2f} | Q: {:.2f} | dist_entropy: {:.2f} | critic_loss: {:.2f}'
-                        .format(episode, step, interval_time, train_time, mean_Q, mean_dist_entropy, mean_value_loss))
+        tensorboard_result = {'critic_lr': lr['critic'], 'actor_lr': lr['actor'],
+                              'Q': mean_Q, 'dist_entropy': mean_dist_entropy, 'critic_loss': mean_value_loss}
+        result = {'Q': mean_Q, 'dist_entropy': mean_dist_entropy, 'critic_loss': mean_value_loss}
+
+        return result, tensorboard_result, train_time
 
     def _update(self, samples, lr: dict):
         # update learning rate
