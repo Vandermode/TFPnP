@@ -43,7 +43,7 @@ def test_csmri_env():
     train_loader, _ = get_csmri_loader()
     denoiser = UNetDenoiser2D('model/unet-nm.pt').to(device)
     solver = ADMMSolver_CSMRI(denoiser)
-    env = CSMRIEnv(train_loader, solver, max_step=6)
+    env = CSMRIEnv(train_loader, solver, max_episode_step=6)
     state = env.reset()
     for k,v in state.items():
         try:

@@ -37,7 +37,7 @@ class Evaluator(object):
 
                 # run
                 psnr_init, psnr_finished, info, imgs = eval_single(self.env, data, policy,
-                                                                   max_step=self.opt.max_step,
+                                                                   max_episode_step=self.opt.max_episode_step,
                                                                    loop_penalty=self.opt.loop_penalty,
                                                                    metric=self.metric)
 
@@ -71,7 +71,7 @@ class Evaluator(object):
                 step - 1, name, metric_tracker))
 
 
-def eval_single(env, data, policy, max_step, loop_penalty, metric):
+def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     observation = env.reset(data=data)
     hidden = policy.init_state()
     _, output_init, gt = env.get_images(observation)
@@ -85,7 +85,7 @@ def eval_single(env, data, policy, max_step, loop_penalty, metric):
     action_seqs = {}
 
     ob = observation
-    while episode_steps < max_step:
+    while episode_steps < max_episode_step:
         action, _, _, hidden = policy(env.get_policy_state(ob), idx_stop=None, train=False, hidden=hidden)
                 
         # since batch size = 1, ob and ob_masked are always identicial

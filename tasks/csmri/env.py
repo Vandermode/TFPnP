@@ -5,8 +5,8 @@ from tfpnp.utils.transforms import complex2channel, complex2real
 
 
 class CSMRIEnv(PnPEnv):
-    def __init__(self, data_loader, solver, max_step, device):
-        super().__init__(data_loader, solver, max_step, device)
+    def __init__(self, data_loader, solver, max_episode_step, device):
+        super().__init__(data_loader, solver, max_episode_step, device)
     
     def get_policy_state(self, state):
         return torch.cat([
@@ -40,7 +40,7 @@ class CSMRIEnv(PnPEnv):
                      variables=solver_state,
                      mask=state.mask,
                      sigma_n=state.sigma_n,
-                     T=state.T + 1/self.max_step)
+                     T=state.T + 1/self.max_episode_step)
     
     def _observation(self):
         idx_left = self.idx_left

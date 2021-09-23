@@ -26,7 +26,7 @@ class MDDPGTrainer:
         self.logger = Logger() if logger is None else logger
 
         # TODO: estimate actual needed memory to prevent OOM error.
-        self.buffer = ReplayMemory(opt.rmsize * opt.max_step)
+        self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step)
         
         self.optimizer_actor = Adam(self.actor.parameters())
         self.optimizer_critic = Adam(self.critic.parameters())
@@ -41,11 +41,10 @@ class MDDPGTrainer:
         hidden = self.actor.init_state()
 
         episode, episode_step = 0, 0
-        interval_time = time.time()
-
-        for iter in range(1, self.opt.train_iters+1):
+        time_stamp = time.time()
+        
+        for step in range(1, self.opt.train_steps+1):
             # select a action
-            # TODO: 1. sample from action space at the first few steps for better exploration. 2. Noise action
             action, hidden = self.run_policy(self.env.get_policy_state(ob), hidden)
 
             # step the env
@@ -58,50 +57,49 @@ class MDDPGTrainer:
             ob = ob2_masked
 
             # end of trajectory handling
-            if done or (episode_step == self.opt.max_step):
-                if iter > self.opt.warmup:
-                    interval_time = time.time() - interval_time
+            if done or (episode_step == self.opt.max_episode_step):
+                if step > self.opt.warmup:
+                    if self.evaluator is not None and (episode+1) % self.opt.validate_interval == 0:
+                        self.evaluator.eval(self.actor, step)
+                        self.save_model(self.opt.output)
 
-                    result, tb_result, train_time = self._update_policy(self.opt.episode_train_times,
-                                                                        self.opt.env_batch,
-                                                                        step=iter)
-                    
-                    # handle logging of training results
-                    fmt_str = '#{}: Steps: {} - RPM[{}/{}] | interval_time: {:.2f} | train_time: {:.2f} | {}'
-                    fmt_result = ' | '.join([f'{k}: {v:.2f}' for k, v in result.items()])
-                    self.logger.log(fmt_str.format(episode, iter, self.buffer.size(), self.buffer.capacity, 
-                                                   interval_time, train_time, fmt_result))
+                train_time_interval = time.time() - time_stamp
+                time_stamp = time.time()
+                result = {'Q': 0, 'dist_entropy': 0, 'critic_loss': 0}
 
+                if step > self.opt.warmup:
+                    result, tb_result = self._update_policy(self.opt.episode_train_times, 
+                                                            self.opt.env_batch,
+                                                            step=step)
                     if self.writer is not None:
                         for k, v in tb_result.items():
-                            self.writer.add_scalar(f'train/{k}', v, iter)
-
-                    # evaluate after a update
-                    if self.evaluator is not None and (episode+1) % self.opt.eval_per_episode == 0:
-                        self.evaluator.eval(self.actor, iter)
-                        self.save_model(self.opt.output)
+                            self.writer.add_scalar(f'train/{k}', v, step)
+                    
+                # handle logging of training results
+                fmt_str = '#{}: Steps: {} - RPM[{}/{}] | interval_time: {:.2f} | train_time: {:.2f} | {}'
+                fmt_result = ' | '.join([f'{k}: {v:.2f}' for k, v in result.items()])
+                self.logger.log(fmt_str.format(episode, step, self.buffer.size(), self.buffer.capacity, 
+                                                train_time_interval, time.time()-time_stamp, fmt_result))
                         
                 # reset state for next episode
                 ob = self.env.reset()
                 episode += 1
                 episode_step = 0
-                interval_time = time.time()
+                time_stamp = time.time()
 
             # save model
-            if (iter % self.opt.save_freq == 0 and iter != 0) or iter == self.opt.train_iters:
-                self.evaluator.eval(self.actor, iter)
-                self.logger.log('Saving model at Iter_{:07d}...'.format(iter), color=COLOR.RED)
-                self.save_model(self.opt.output, iter)
+            if step % self.opt.save_freq == 0 or step == self.opt.train_steps:
+                self.evaluator.eval(self.actor, step)
+                self.logger.log('Saving model at Step_{:07d}...'.format(step), color=COLOR.RED)
+                self.save_model(self.opt.output, step)
 
-    def _update_policy(self, train_times, env_batch, step):
+    def _update_policy(self, episode_train_times, env_batch, step):
         self.actor.train()
 
         tot_Q, tot_value_loss, tot_dist_entropy = 0, 0, 0
         lr = self.lr_scheduler(step)
 
-        train_time = time.time()
-
-        for _ in range(train_times):
+        for _ in range(episode_train_times):
             samples = self.buffer.sample_batch(env_batch)
             Q, value_loss, dist_entropy = self._update(samples=samples, lr=lr)
 
@@ -109,17 +107,15 @@ class MDDPGTrainer:
             tot_value_loss += value_loss
             tot_dist_entropy += dist_entropy
 
-        train_time = time.time() - train_time
-
-        mean_Q = tot_Q / train_times
-        mean_dist_entropy = tot_dist_entropy / train_times
-        mean_value_loss = tot_value_loss / train_times
+        mean_Q = tot_Q / episode_train_times
+        mean_dist_entropy = tot_dist_entropy / episode_train_times
+        mean_value_loss = tot_value_loss / episode_train_times
 
         tensorboard_result = {'critic_lr': lr['critic'], 'actor_lr': lr['actor'],
                               'Q': mean_Q, 'dist_entropy': mean_dist_entropy, 'critic_loss': mean_value_loss}
         result = {'Q': mean_Q, 'dist_entropy': mean_dist_entropy, 'critic_loss': mean_value_loss}
 
-        return result, tensorboard_result, train_time
+        return result, tensorboard_result
 
     def _update(self, samples, lr: dict):
         # update learning rate
@@ -154,15 +150,13 @@ class MDDPGTrainer:
 
         # compute ddpg loss for continuous actions
         V_next = self.critic(eval_state2)
-        V_next = (self.opt.discount *
-                  (1 - action['idx_stop'].float())).unsqueeze(-1) * V_next
+        V_next = (self.opt.discount * (1 - action['idx_stop'].float())).unsqueeze(-1) * V_next
         ddpg_loss = V_next + reward
 
         # compute entroy regularization
         entroy_regularization = dist_entropy
 
-        policy_loss = - (a2c_loss + ddpg_loss +
-                         self.opt.lambda_e * entroy_regularization).mean()
+        policy_loss = - (a2c_loss + ddpg_loss + self.opt.lambda_e * entroy_regularization).mean()
         value_loss = self.criterion(Q_target, V_cur)
 
         # perform one step gradient descent

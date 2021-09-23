@@ -41,7 +41,7 @@ class DifferentiableEnv(Env):
 
 
 class PnPEnv(DifferentiableEnv):
-    def __init__(self, data_loader, solver, max_step, device):
+    def __init__(self, data_loader, solver, max_episode_step, device):
         super(PnPEnv, self).__init__()
         self.data_loader = data_loader
         self.data_iterator = iter(
@@ -50,7 +50,7 @@ class PnPEnv(DifferentiableEnv):
 
         self.solver = solver
 
-        self.max_step = max_step
+        self.max_episode_step = max_episode_step
         self.cur_step = 0
 
         self.state = None
@@ -101,7 +101,7 @@ class PnPEnv(DifferentiableEnv):
         # construct state of time step
         B, _, W, H = data['gt'].shape
         T = torch.ones([B, 1, W, H], dtype=torch.float32,
-                       device=self.device) * self.cur_step / self.max_step
+                       device=self.device) * self.cur_step / self.max_episode_step
         data.update({'T': T})
 
         self.state = data
@@ -122,7 +122,7 @@ class PnPEnv(DifferentiableEnv):
             solver_state = self.solver(inputs, parameters)
 
         self.state['T'] = torch.ones_like(
-            self.state['T']) * self.cur_step / self.max_step
+            self.state['T']) * self.cur_step / self.max_episode_step
         self.state['output'][self.idx_left, ...] = self.solver.get_output(
             solver_state)
         self.state['solver'][self.idx_left, ...] = solver_state
@@ -138,7 +138,7 @@ class PnPEnv(DifferentiableEnv):
         all_done = len(self.idx_left) == 0
         done = idx_stop.detach()
 
-        if self.cur_step == self.max_step:
+        if self.cur_step == self.max_episode_step:
             all_done = True
             done = torch.ones_like(idx_stop)
 

@@ -33,7 +33,8 @@ def main(opt):
     sampling_masks = ['radial_128_2', 'radial_128_4', 'radial_128_8']
     sigma_n_eval = 15
 
-    train_root = data_dir / 'Images_128'
+    # train_root = data_dir / 'Images_128'
+    train_root = '/media/kaixuan/DATA/Papers/Code/Data/Reflection/VOCdevkit/VOC2012/Images_128'
     val_roots = [data_dir / 'Medical7_2020' / sampling_mask / str(sigma_n_eval) for sampling_mask in sampling_masks]
     masks = [loadmat(mask_dir / f'{sampling_mask}.mat').get('mask') for sampling_mask in sampling_masks]
 
@@ -64,8 +65,8 @@ def main(opt):
     if torch.cuda.device_count() > 1:
         solver = DataParallelWithCallback(solver)
 
-    env = CSMRIEnv(train_loader, solver, max_step=opt.max_step, device=device)
-    eval_env = CSMRIEnv(None, solver, max_step=opt.max_step, device=device)
+    env = CSMRIEnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
+    eval_env = CSMRIEnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
     evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)
     
     if opt.eval:
