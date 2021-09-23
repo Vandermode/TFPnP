@@ -53,7 +53,7 @@ class Options:
         if torch.cuda.device_count() > 1:
             print("[i] Use", torch.cuda.device_count(), "GPUs...")
 
-        torch.backends.cudnn.deterministic = False
+        torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = True
 
         opt.num_workers = 0 if opt.debug else opt.num_workers        

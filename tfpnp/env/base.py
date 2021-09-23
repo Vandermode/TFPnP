@@ -44,8 +44,7 @@ class PnPEnv(DifferentiableEnv):
     def __init__(self, data_loader, solver, max_episode_step, device):
         super(PnPEnv, self).__init__()
         self.data_loader = data_loader
-        self.data_iterator = iter(
-            data_loader) if data_loader is not None else None
+        self.data_iterator = iter(data_loader) if data_loader is not None else None
         self.device = device
 
         self.solver = solver
@@ -116,15 +115,13 @@ class PnPEnv(DifferentiableEnv):
         # perform one step using solver and update state
         with torch.no_grad():
             def f(x): return x[self.idx_left, ...]
-            inputs = (f(self.state['solver']), map(
-                f, self.solver.filter_aux_inputs(self.state)))
+            inputs = (f(self.state['solver']), 
+                      map(f, self.solver.filter_aux_inputs(self.state)))
             parameters = self.solver.filter_hyperparameter(action)
             solver_state = self.solver(inputs, parameters)
 
-        self.state['T'] = torch.ones_like(
-            self.state['T']) * self.cur_step / self.max_episode_step
-        self.state['output'][self.idx_left, ...] = self.solver.get_output(
-            solver_state)
+        self.state['T'] = torch.ones_like(self.state['T']) * self.cur_step / self.max_episode_step
+        self.state['output'][self.idx_left, ...] = self.solver.get_output(solver_state)
         self.state['solver'][self.idx_left, ...] = solver_state
 
         # compute reward
@@ -186,7 +183,6 @@ class PnPEnv(DifferentiableEnv):
 def torch_psnr(output, gt):
     N = output.shape[0]
     output = torch.clamp(output, 0, 1)
-    mse = torch.mean(F.mse_loss(output.view(N, -1),
-                                gt.view(N, -1), reduction='none'), dim=1)
+    mse = torch.mean(F.mse_loss(output.view(N, -1), gt.view(N, -1), reduction='none'), dim=1)
     psnr = 10 * torch.log10((1 ** 2) / mse)
     return psnr.unsqueeze(1)
