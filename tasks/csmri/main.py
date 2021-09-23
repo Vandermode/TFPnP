@@ -17,7 +17,6 @@ from tfpnp.trainer.mddpg.critic import ResNet_wobn
 from tfpnp.eval import Evaluator
 from tfpnp.utils.options import Options
 
-torch.autograd.set_detect_anomaly(True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -33,8 +32,7 @@ def main(opt):
     sampling_masks = ['radial_128_2', 'radial_128_4', 'radial_128_8']
     sigma_n_eval = 15
 
-    # train_root = data_dir / 'Images_128'
-    train_root = '/media/kaixuan/DATA/Papers/Code/Data/Reflection/VOCdevkit/VOC2012/Images_128'
+    train_root = data_dir / 'Images_128'
     val_roots = [data_dir / 'Medical7_2020' / sampling_mask / str(sigma_n_eval) for sampling_mask in sampling_masks]
     masks = [loadmat(mask_dir / f'{sampling_mask}.mat').get('mask') for sampling_mask in sampling_masks]
 

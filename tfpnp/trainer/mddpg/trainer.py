@@ -1,5 +1,7 @@
+import ipdb
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.optim.adam import Adam
 from tensorboardX.writer import SummaryWriter
 import time
@@ -181,6 +183,7 @@ class MDDPGTrainer:
         return action, hidden
 
     def save_experience(self, ob, hidden):
+        B = ob.shape[0]
         for k, v in ob.items():
             if isinstance(v, torch.Tensor):
                 ob[k] = ob[k].clone().detach().cpu()
@@ -189,9 +192,9 @@ class MDDPGTrainer:
             hidden = hidden.clone().detach().cpu()
             ob['hidden'] = hidden
         else:
-            ob['hidden'] = [1]  # dummmy hidden state for non-rnn actor
-
-        for i in range(ob.shape[0]):
+            ob['hidden'] = np.zeros(B)  # dummmy hidden state for non-rnn actor
+        
+        for i in range(B):
             self.buffer.store(ob[i])
 
     def convert2batch(self, states):
