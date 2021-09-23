@@ -2,19 +2,19 @@ import random
 
 
 class ReplayMemory:
-    def __init__(self, buffer_size):
-        self.buffer_size = buffer_size
+    def __init__(self, capacity):
+        self.capacity = capacity
         self.buffer = []
         self.index = 0
 
     def store(self, obj):
-        if self.size() > self.buffer_size:
-            print('buffer size larger than set value, trimming...')
-            self.buffer = self.buffer[(self.size() - self.buffer_size):]
-        elif self.size() == self.buffer_size:
+        if self.size() > self.capacity:
+            print('buffer size larger than capacity, trimming...')
+            self.buffer = self.buffer[(self.size() - self.capacity):]
+        elif self.size() == self.capacity:
             self.buffer[self.index] = obj
             self.index += 1
-            self.index %= self.buffer_size
+            self.index %= self.capacity
         else:
             self.buffer.append(obj)
 
@@ -33,5 +33,4 @@ class ReplayMemory:
         for idx, val in index_value:
             indexes.append(idx)
             values.append(val)
-        # print(indexes)
         return values

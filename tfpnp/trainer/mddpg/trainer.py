@@ -25,8 +25,9 @@ class MDDPGTrainer:
         self.device = device
         self.logger = Logger() if logger is None else logger
 
+        # TODO: estimate actual needed memory to prevent OOM error.
         self.buffer = ReplayMemory(opt.rmsize * opt.max_step)
-
+        
         self.optimizer_actor = Adam(self.actor.parameters())
         self.optimizer_critic = Adam(self.critic.parameters())
 
@@ -66,9 +67,10 @@ class MDDPGTrainer:
                                                                         step=iter)
                     
                     # handle logging of training results
-                    fmt_str = '#{}: steps: {} | interval_time: {:.2f} | train_time: {:.2f} | {}'
+                    fmt_str = '#{}: Steps: {} - RPM[{}/{}] | interval_time: {:.2f} | train_time: {:.2f} | {}'
                     fmt_result = ' | '.join([f'{k}: {v:.2f}' for k, v in result.items()])
-                    self.logger.log(fmt_str.format(episode, iter, interval_time, train_time, fmt_result))
+                    self.logger.log(fmt_str.format(episode, iter, self.buffer.size(), self.buffer.capacity, 
+                                                   interval_time, train_time, fmt_result))
 
                     if self.writer is not None:
                         for k, v in tb_result.items():
