@@ -1,5 +1,5 @@
 from .solver.base import PnPSolver
-from .denoiser import GRUNetDenoiser, UNetDenoiser2D, Denoiser
+from .denoiser import UNetDenoiser2D, Denoiser
 
 
 def create_denoiser(opt):
@@ -7,8 +7,6 @@ def create_denoiser(opt):
     
     if opt.denoiser == 'unet':
         denoiser = UNetDenoiser2D()
-    elif opt.denoiser == 'grunet':
-        denoiser = GRUNetDenoiser()
     else:
         raise NotImplementedError
 

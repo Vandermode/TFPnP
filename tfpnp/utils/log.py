@@ -40,4 +40,4 @@ class Logger:
 if __name__ == '__main__':
     # xprint('hello', 'asdf', color=RED, end='xxx')
     logger = Logger('./')
-    logger.log('hello', 'asdf', color=RED)
+    logger.log('hello', 'asdf', color=COLOR.RED)

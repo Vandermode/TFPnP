@@ -3,8 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.utils.weight_norm as weightNorm
 
-import sys
-
 
 def conv3x3(in_planes, out_planes, stride=1):
     return weightNorm(nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True))

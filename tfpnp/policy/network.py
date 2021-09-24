@@ -4,8 +4,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.nn.utils.weight_norm as weightNorm
-from torch.distributions import Categorical, Normal, MultivariateNormal, Beta
+from torch.distributions import Categorical
 from .sync_batchnorm import SynchronizedBatchNorm2d
 
 # norm = nn.BatchNorm2d

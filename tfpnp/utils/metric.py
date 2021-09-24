@@ -21,8 +21,7 @@ def MSIQA(X, Y):
 
 
 def psnr_qrnn3d(X, Y, data_range=255):
-    cal_bwpsnr = Bandwise(
-        partial(peak_signal_noise_ratio, data_range=data_range))
+    cal_bwpsnr = Bandwise(partial(peak_signal_noise_ratio, data_range=data_range))
     return np.mean(cal_bwpsnr(X, Y))
 
 

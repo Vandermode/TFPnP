@@ -28,7 +28,7 @@ class MDDPGTrainer:
 
         # TODO: estimate actual needed memory to prevent OOM error.
         self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step)
-        
+
         self.optimizer_actor = Adam(self.actor.parameters())
         self.optimizer_critic = Adam(self.critic.parameters())
 
@@ -43,7 +43,7 @@ class MDDPGTrainer:
 
         episode, episode_step = 0, 0
         time_stamp = time.time()
-        
+
         for step in range(1, self.opt.train_steps+1):
             # select a action
             action, hidden = self.run_policy(self.env.get_policy_state(ob), hidden)
@@ -69,19 +69,19 @@ class MDDPGTrainer:
                 result = {'Q': 0, 'dist_entropy': 0, 'critic_loss': 0}
 
                 if step > self.opt.warmup:
-                    result, tb_result = self._update_policy(self.opt.episode_train_times, 
+                    result, tb_result = self._update_policy(self.opt.episode_train_times,
                                                             self.opt.env_batch,
                                                             step=step)
                     if self.writer is not None:
                         for k, v in tb_result.items():
                             self.writer.add_scalar(f'train/{k}', v, step)
-                    
+
                 # handle logging of training results
                 fmt_str = '#{}: Steps: {} - RPM[{}/{}] | interval_time: {:.2f} | train_time: {:.2f} | {}'
                 fmt_result = ' | '.join([f'{k}: {v:.2f}' for k, v in result.items()])
-                self.logger.log(fmt_str.format(episode, step, self.buffer.size(), self.buffer.capacity, 
-                                                train_time_interval, time.time()-time_stamp, fmt_result))
-                        
+                self.logger.log(fmt_str.format(episode, step, self.buffer.size(), self.buffer.capacity,
+                                               train_time_interval, time.time()-time_stamp, fmt_result))
+
                 # reset state for next episode
                 ob = self.env.reset()
                 episode += 1
@@ -192,7 +192,7 @@ class MDDPGTrainer:
             ob['hidden'] = hidden
         else:
             ob['hidden'] = np.zeros(B)  # dummmy hidden state for non-rnn actor
-        
+
         for i in range(B):
             self.buffer.store(ob[i])
 
