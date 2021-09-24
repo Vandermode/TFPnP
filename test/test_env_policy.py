@@ -51,7 +51,7 @@ def test_csmri_env():
         except:
             print(k, type(v))
 
-    policy_state = env.get_policy_state(state)
+    policy_state = env.get_policy_ob(state)
     policy_network = ResNetActor(6+3, 5).to(device)
     action, action_log_prob, dist_entroy = policy_network(policy_state)
     print(action)
@@ -59,7 +59,7 @@ def test_csmri_env():
     print(dist_entroy)
     
     critic = ResNet_wobn(9, 18, 1) .to(device)
-    eval_state = env.get_eval_state(state)
+    eval_state = env.get_eval_ob(state)
     print(eval_state.shape)
     v = critic(eval_state)
     print(v.shape)

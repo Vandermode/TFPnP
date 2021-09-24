@@ -6,6 +6,7 @@ from tensorboardX.writer import SummaryWriter
 import time
 
 from ...data.batch import Batch
+from ...eval import Evaluator
 from ...env import PnPEnv
 from ...utils.misc import soft_update, hard_update
 from ...utils.rpm import ReplayMemory
@@ -14,7 +15,7 @@ from ...utils.log import Logger, COLOR
 
 class MDDPGTrainer:
     def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler, device,
-                 evaluator=None, writer: SummaryWriter = None, logger=None):
+                 evaluator:Evaluator=None, writer:SummaryWriter = None, logger=None):
         self.opt = opt
         self.env = env
         self.actor = actor
@@ -46,7 +47,7 @@ class MDDPGTrainer:
 
         for step in range(1, self.opt.train_steps+1):
             # select a action
-            action, hidden = self.run_policy(self.env.get_policy_state(ob), hidden)
+            action, hidden = self.run_policy(self.env.get_policy_ob(ob), hidden)
 
             # step the env
             _, ob2_masked, _, done, _ = self.env.step(action)
@@ -126,23 +127,23 @@ class MDDPGTrainer:
             param_group['lr'] = lr['critic']
 
         # convert list of named tuple into named tuple of batch
-        state = self.convert2batch(samples)
-        hidden = state.hidden
+        ob = self.convert2batch(samples)
+        hidden = ob.hidden
 
-        policy_state = self.env.get_policy_state(state)
+        policy_ob = self.env.get_policy_ob(ob)
 
-        action, action_log_prob, dist_entropy, _ = self.actor(policy_state, None, True, hidden)
+        action, action_log_prob, dist_entropy, _ = self.actor(policy_ob, None, True, hidden)
 
-        state2, reward = self.env.forward(state, action)
+        ob2, reward = self.env.forward(ob, action)
         reward -= self.opt.loop_penalty
 
-        eval_state = self.env.get_eval_state(state)
-        eval_state2 = self.env.get_eval_state(state2)
+        eval_ob = self.env.get_eval_ob(ob)
+        eval_ob2 = self.env.get_eval_ob(ob2)
 
         # compute actor critic loss for discrete action
-        V_cur = self.critic(eval_state)
+        V_cur = self.critic(eval_ob)
         with torch.no_grad():
-            V_next_target = self.critic_target(eval_state2)
+            V_next_target = self.critic_target(eval_ob2)
             V_next_target = (
                 self.opt.discount * (1 - action['idx_stop'].float())).unsqueeze(-1) * V_next_target
             Q_target = V_next_target + reward
@@ -150,7 +151,7 @@ class MDDPGTrainer:
         a2c_loss = action_log_prob * advantage
 
         # compute ddpg loss for continuous actions
-        V_next = self.critic(eval_state2)
+        V_next = self.critic(eval_ob2)
         V_next = (self.opt.discount * (1 - action['idx_stop'].float())).unsqueeze(-1) * V_next
         ddpg_loss = V_next + reward
 
@@ -174,10 +175,10 @@ class MDDPGTrainer:
 
         return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item()
 
-    def run_policy(self, state, hidden=None):
+    def run_policy(self, ob, hidden=None):
         self.actor.eval()
         with torch.no_grad():
-            action, _, _, hidden = self.actor(state, idx_stop=None, train=False, hidden=hidden)
+            action, _, _, hidden = self.actor(ob, idx_stop=None, train=False, hidden=hidden)
         self.actor.train()
         return action, hidden
 
@@ -196,8 +197,8 @@ class MDDPGTrainer:
         for i in range(B):
             self.buffer.store(ob[i])
 
-    def convert2batch(self, states):
-        batch = Batch.stack(states)
+    def convert2batch(self, obs):
+        batch = Batch.stack(obs)
         for k, v in batch.items():
             if isinstance(v, torch.Tensor):
                 batch[k] = batch[k].to(self.device)

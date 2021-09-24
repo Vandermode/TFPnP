@@ -1,10 +1,11 @@
 import torch
 import torch.nn.functional as F
-import numpy as np
+from torch.utils.data.dataloader import DataLoader
 
 from ..data.util import dict_to_device
 from ..utils.misc import torch2img255
-
+from ..pnp import PnPSolver
+from ..data.batch import Batch
 
 class Env:
     def reset(self):
@@ -41,7 +42,10 @@ class DifferentiableEnv(Env):
 
 
 class PnPEnv(DifferentiableEnv):
-    def __init__(self, data_loader, solver, max_episode_step, device):
+    """ 
+    """
+    
+    def __init__(self, data_loader:DataLoader , solver: PnPSolver, max_episode_step, device):
         super(PnPEnv, self).__init__()
         self.data_loader = data_loader
         self.data_iterator = iter(data_loader) if data_loader is not None else None
@@ -56,28 +60,65 @@ class PnPEnv(DifferentiableEnv):
         self.last_metric = 0
         self.metric_fn = torch_psnr
 
-    ###################################################
+    ################################################################################
     #   Abstract methods
-    ###################################################
+    # 
+    #   You need to implement all the following methods in your environment to 
+    #   make it compatible with MDDPGTrainer.
+    #################################################################################
 
-    def get_policy_state(self, state):
+    def get_policy_ob(self, ob:Batch):
+        """ Extract the input for policy network from the observation.
+
+            Args:
+                ob (Batch): the observation.
+            
+            Returns:
+                A torch tensor for policy network.
+        """
         raise NotImplementedError
 
-    def get_eval_state(self, state):
+    def get_eval_ob(self, ob:Batch):
+        """ Extract the input for critic network from the observation.
+
+            Args:
+                ob (Batch): the observation.
+            
+            Returns:
+                A torch tensor for evalutaion network, such as critic in A2C.
+        """
         raise NotImplementedError
 
-    def _get_attribute(self, state, key):
+    def _get_attribute(self, ob:Batch, key:str):
+        
         raise NotImplementedError
 
-    def _build_next_state(self, state, solver_state):
+    def _build_next_ob(self, ob:Batch, solver_state):
+        """ Build next observation from current observatio and solver state.
+
+        Args:
+            ob (Batch): the current observation.
+            solver_state (Any): the current solver state.
+
+        Returns:
+            A Batch contains the next observation.
+        """
         raise NotImplementedError
 
     def _observation(self):
+        """ Construct the observation from the internal state of the env, which can
+            be accessed by `self.state`.
+            
+            Returns:
+                A Batch contains the observation. Make sure each element's first dim is Batch size.
+        """
         raise NotImplementedError
 
-    ###################################################
-    #   Basic APIs
-    ###################################################
+    #################################################################################
+    #   Basic APIs 
+    # 
+    #   Do not modify the following methods unless you understand what you are doing. 
+    #################################################################################
 
     def reset(self, data=None):
         self.cur_step = 0  # # of step in an episode
@@ -144,10 +185,10 @@ class PnPEnv(DifferentiableEnv):
 
         return ob, ob_masked, reward, all_done, {'done': done}
 
-    def forward(self, state, action):
-        output = self._get_attribute(state, 'output')
-        gt = self._get_attribute(state, 'gt')
-        inputs = self._get_attribute(state, 'solver_input')
+    def forward(self, ob, action):
+        output = self._get_attribute(ob, 'output')
+        gt = self._get_attribute(ob, 'gt')
+        inputs = self._get_attribute(ob, 'solver_input')
 
         parameters = self.solver.filter_hyperparameter(action)
         solver_state = self.solver(inputs, parameters)
@@ -156,12 +197,12 @@ class PnPEnv(DifferentiableEnv):
         # compute reward
         reward = self.metric_fn(output2, gt) - self.metric_fn(output, gt)
 
-        return self._build_next_state(state, solver_state), reward
+        return self._build_next_ob(ob, solver_state), reward
 
-    def get_images(self, state, pre_process=torch2img255):
-        input = pre_process(self._get_attribute(state, 'input'))
-        output = pre_process(self._get_attribute(state, 'output'))
-        gt = pre_process(self._get_attribute(state, 'gt'))
+    def get_images(self, ob, pre_process=torch2img255):
+        input = pre_process(self._get_attribute(ob, 'input'))
+        output = pre_process(self._get_attribute(ob, 'output'))
+        gt = pre_process(self._get_attribute(ob, 'gt'))
 
         return input, output, gt
 

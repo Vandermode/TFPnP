@@ -86,7 +86,7 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
 
     ob = observation
     while episode_steps < max_episode_step:
-        action, _, _, hidden = policy(env.get_policy_state(ob), idx_stop=None, train=False, hidden=hidden)
+        action, _, _, hidden = policy(env.get_policy_ob(ob), idx_stop=None, train=False, hidden=hidden)
                 
         # since batch size = 1, ob and ob_masked are always identicial
         ob, _, reward, done, _ = env.step(action)
