@@ -1,13 +1,37 @@
-# TFPnP Rewrite
+# TFPnP
 
-TODO:
-- RGB Deblur solver
-- psnr range [done]
-- out of memory bug [done]
-- save options in checkpoints
-- incoporate tianshou batch [done]
-- idx left bug [done]: rho might be occasionlly to small,which make x NAN after data_solution_admm_sr.
-- save model after eval
-- save training log
-- plot multiple line in one figure
-- 区分 state and observation , step用的是state，forward用的ob
+[Project Page]() | [Paper (ICML version)](https://arxiv.org/abs/2002.09611) | [Paper (Journal version)](https://arxiv.org/abs/2002.09611) | [Pretrained Model]() | [Colab Demo]()
+
+**Tuning-free Plug-and-Play Proximal Algorithm for Inverse Imaging Problems, ICML 2020 (Best Paper)**
+
+Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Schönlieb, Hua Huang
+
+## :sparkles: News
+
+- 2021-9-25: the test code is released.
+
+
+## Requirement
+
+- Pytorch <= 1.7
+
+## Getting Started
+
+- Testing
+
+- Training
+
+## Citation
+
+If you find our work useful for your research, please consider citing the following papers :)
+
+```
+@inproceedings{wei2020tuning,
+  title={Tuning-free plug-and-play proximal algorithm for inverse imaging problems},
+  author={Wei, Kaixuan and Aviles-Rivero, Angelica and Liang, Jingwei and Fu, Ying and Sch{\"o}nlieb, Carola-Bibiane and Huang, Hua},
+  booktitle={International Conference on Machine Learning},
+  pages={10158--10169},
+  year={2020},
+  organization={PMLR}
+}
+```
