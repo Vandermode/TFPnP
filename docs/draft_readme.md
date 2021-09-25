@@ -1,8 +1,8 @@
 # TFPnP
 
-[Project Page]() | [Paper (ICML version)](https://arxiv.org/abs/2002.09611) | [Paper (Journal version)](https://arxiv.org/abs/2002.09611) | [Pretrained Model]() | [Colab Demo]()
+[Project Page]() | [Paper (ICML version)](https://arxiv.org/abs/2002.09611) | [Paper (Journal version)](https://arxiv.org/abs/2012.05703) | [Pretrained Model]() | [Colab Demo]()
 
-**Tuning-free Plug-and-Play Proximal Algorithm for Inverse Imaging Problems, ICML 2020 (Best Paper)**
+**Tuning-free Plug-and-Play Proximal Algorithm for Inverse Imaging Problems, ICML 2020**
 
 Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Schönlieb, Hua Huang
 
