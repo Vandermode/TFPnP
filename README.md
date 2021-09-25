@@ -1,6 +1,6 @@
 # TFPnP
 *This codebase is still under reconstruction*    
-[Project Page]() | [Paper (ICML version)](https://arxiv.org/abs/2002.09611) | [Paper (Journal version)](https://arxiv.org/abs/2012.05703) | [Pretrained Model (Onedrive)](https://1drv.ms/u/s!AomvdxwcLmYImAxUxtn5DtMEjFbs?e=phu6Pu) | [Pretrained Model (aliyun)](https://www.aliyundrive.com/s/sUYiLGFLun5)
+[Project Page]() | [Paper (ICML version)](https://arxiv.org/abs/2002.09611) | [Paper (Journal version)](https://arxiv.org/abs/2012.05703) | [Pretrained Model](https://1drv.ms/u/s!AomvdxwcLmYImAxUxtn5DtMEjFbs?e=phu6Pu)
 
 **Tuning-free Plug-and-Play Proximal Algorithm for Inverse Imaging Problems, ICML 2020 ([Award](https://icml.cc/Conferences/2020/Awards) Paper)** 
 
