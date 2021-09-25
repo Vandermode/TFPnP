@@ -25,8 +25,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main(opt):
     data_dir = Path('data')
     log_dir = Path('log') / opt.exp
-    mask_dir = data_dir / 'masks'    
-    
+    mask_dir = data_dir / 'pr' / 'masks'
+
     writer = SummaryWriter(log_dir)
 
     alphas = [9, 27, 81]
@@ -35,9 +35,9 @@ def main(opt):
     meta_info = loadmat(mask_dir / 'pr_x4.mat')
     obs_mask = meta_info.get('mask')
     obs_mask = np.stack((obs_mask.real, obs_mask.imag), axis=-1)
-    
+
     train_root = data_dir / 'Images_128'
-    val_root = data_dir / 'PrDeep_12'
+    val_root = data_dir / 'pr' / 'PrDeep_12'
 
     train_dataset = PRDataset(train_root, fns=None, masks=[obs_mask], noise_model=noise_model)
     val_datasets = [PRDataset(val_root, fns=None, masks=[obs_mask], noise_model=PoissonModel([alpha])) for alpha in alphas]
@@ -48,7 +48,7 @@ def main(opt):
 
     val_loaders = [torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False,
-        num_workers=0, pin_memory=True) for val_dataset in val_datasets]    
+        num_workers=0, pin_memory=True) for val_dataset in val_datasets]
 
     val_names = [f'alpha_{alpha}' for alpha in alphas]
 
@@ -59,14 +59,14 @@ def main(opt):
     solver = create_solver_pr(opt, denoiser).to(device)
     actor = create_policy_network(opt, base_dim).to(device)  # policy network
     num_var = solver.num_var
-    
+
     if torch.cuda.device_count() > 1:
         solver = DataParallelWithCallback(solver)
 
     env = PREnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
     eval_env = PREnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
     evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)
-    
+
     if opt.eval:
         actor_ckpt = torch.load(opt.resume)
         actor.load_state_dict(actor_ckpt)
@@ -80,12 +80,12 @@ def main(opt):
             return {'critic': 5e-5, 'actor': 1e-5}
 
     critic = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
-    critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)        
+    critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
 
     trainer = MDDPGTrainer(opt, env, actor=actor,
-                             critic=critic, critic_target=critic_target, 
-                             lr_scheduler=lr_scheduler, device=device, 
-                             evaluator=evaluator, writer=writer)
+                           critic=critic, critic_target=critic_target,
+                           lr_scheduler=lr_scheduler, device=device,
+                           evaluator=evaluator, writer=writer)
     trainer.train()
 
 

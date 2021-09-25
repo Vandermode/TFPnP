@@ -24,7 +24,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main(opt):
     data_dir = Path('data')
     log_dir = Path('log') / opt.exp
-    mask_dir = data_dir / 'masks'    
+    mask_dir = data_dir / 'csmri' / 'masks'
 
     sigma_ns = [5, 10, 15]
     noise_model = GaussianModelD(sigma_ns)
@@ -33,7 +33,7 @@ def main(opt):
     sigma_n_eval = 15
 
     train_root = data_dir / 'Images_128'
-    val_roots = [data_dir / 'Medical7_2020' / sampling_mask / str(sigma_n_eval) for sampling_mask in sampling_masks]
+    val_roots = [data_dir / 'csmri' / 'Medical7_2020' / sampling_mask / str(sigma_n_eval) for sampling_mask in sampling_masks]
     masks = [loadmat(mask_dir / f'{sampling_mask}.mat').get('mask') for sampling_mask in sampling_masks]
 
     train_dataset = CSMRIDataset(train_root, fns=None, masks=masks, noise_model=noise_model, repeat=12*100)
@@ -46,27 +46,27 @@ def main(opt):
 
     val_loaders = [torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False,
-        num_workers=0, pin_memory=True) for val_dataset in val_datasets]    
+        num_workers=0, pin_memory=True) for val_dataset in val_datasets]
 
-    val_names = [f'radial_128_2_{sigma_n_eval}', f'radial_128_4_{sigma_n_eval}', f'radial_128_8_{sigma_n_eval}']        
+    val_names = [f'radial_128_2_{sigma_n_eval}', f'radial_128_4_{sigma_n_eval}', f'radial_128_8_{sigma_n_eval}']
 
     val_loaders = dict(zip(val_names, val_loaders))
-        
-    base_dim = 6    
+
+    base_dim = 6
     actor = create_policy_network(opt, base_dim).to(device)  # policy network
     denoiser = create_denoiser(opt).to(device)
     solver = create_solver_csmri(opt, denoiser).to(device)
     num_var = solver.num_var
-    
+
     if torch.cuda.device_count() > 1:
         solver = DataParallelWithCallback(solver)
 
     writer = SummaryWriter(log_dir)
-    
+
     env = CSMRIEnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
     eval_env = CSMRIEnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
     evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)
-    
+
     if opt.eval:
         actor_ckpt = torch.load(opt.resume)
         actor.load_state_dict(actor_ckpt)
@@ -78,14 +78,14 @@ def main(opt):
             return {'critic': 3e-4, 'actor': 1e-3}
         else:
             return {'critic': 1e-4, 'actor': 3e-4}
-        
+
     critic = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
-    critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)        
+    critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
 
     trainer = MDDPGTrainer(opt, env, actor=actor,
-                             critic=critic, critic_target=critic_target, 
-                             lr_scheduler=lr_scheduler, device=device, 
-                             evaluator=evaluator, writer=writer)
+                           critic=critic, critic_target=critic_target,
+                           lr_scheduler=lr_scheduler, device=device,
+                           evaluator=evaluator, writer=writer)
     trainer.train()
 
 

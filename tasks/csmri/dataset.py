@@ -63,6 +63,8 @@ class CSMRIDataset(Dataset):
 
         output = complex2real(ATy0.clone().detach())
         mask = mask.unsqueeze(0).bool()
+        sigma_n = np.ones_like(y0) * sigma_n
+        
         dic = {'y0': y0, 'x0': x0, 'ATy0': ATy0, 'gt': target, 'mask': mask, 'sigma_n': sigma_n, 'output': output, 'input': x0}
 
         # y0,x0,ATy0, sigma_n: C, W, H, 2
