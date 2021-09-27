@@ -17,9 +17,39 @@ Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Sch√
 
 ## Getting Started
 
-- Testing
+Clone the repo, and install the `tfpnp` package first.
 
-- Training
+```shell
+git clone https://github.com/Vandermode/TFPnP.git
+cd TFPnP
+pip install .
+```
+
+### Testing
+
+1. Download the test data and pretrained models from [Link](https://1drv.ms/u/s!AomvdxwcLmYImAxUxtn5DtMEjFbs?e=phu6Pu), unzip and put them in `tasks/[task]/data` and `tasks/[task]/checkpoints`.
+2. Run the test via the following command. (You can find more testing commands in `script.sh` of each task directory)
+
+```shell
+cd tasks/csmri
+python -W ignore main.py --solver admm --exp test -rs 15000 --max_episode_step 6 --action_pack 5 --eval -r ./checkpoints/csmri_admm_5x6_48/actor_0015000.pkl
+
+cd tasks/pr
+python main.py --solver iadmm --exp pr_admm_5x6_36 --eval --max_episode_step 6 --action_pack 5 -r ./checkpoints/pr_admm_5x6_36/actor_0015000.pkl -rs 15000
+```
+
+### Training
+
+1. Download the training data from [Link](https://1drv.ms/u/s!AomvdxwcLmYImAxUxtn5DtMEjFbs?e=phu6Pu), unzip and put it in `tasks/[task]/data`.
+2. Run the following command to retrain the model. You need about 20G video memory for the training.
+
+```shell
+cd tasks/csmri
+python -W ignore main.py --solver admm --exp csmri_admm_5x6_48_new --validate_interval 10 --env_batch 48 --rmsize 480 --warmup 20 -lp 0.05 --train_steps 15000 --max_episode_step 6 --action_pack 5 -le 0.2
+
+cd tasks/pr
+python main.py --solver iadmm --exp pr_admm_5x6_36 --validate_interval 50 --env_batch 36 --rmsize 360 --warmup 20 -lp 0.05 --train_steps 15000 --max_episode_step 6 --action_pack 5 -le 0.2
+```
 
 ## Citation
 
