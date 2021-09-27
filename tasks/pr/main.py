@@ -27,6 +27,16 @@ def main(opt):
     log_dir = Path('log') / opt.exp
     mask_dir = data_dir / 'pr' / 'masks'
 
+    base_dim = 14
+    denoiser = create_denoiser(opt).to(device)
+    solver = create_solver_pr(opt, denoiser).to(device)
+    actor = create_policy_network(opt, base_dim).to(device)  # policy network
+    num_var = solver.num_var
+
+    # ---------------------------------------------------------------------------- #
+    #                                     Valid                                    #
+    # ---------------------------------------------------------------------------- #
+
     writer = SummaryWriter(log_dir)
 
     alphas = [9, 27, 81]
@@ -36,34 +46,17 @@ def main(opt):
     obs_mask = meta_info.get('mask')
     obs_mask = np.stack((obs_mask.real, obs_mask.imag), axis=-1)
 
-    train_root = data_dir / 'Images_128'
     val_root = data_dir / 'pr' / 'PrDeep_12'
-
-    train_dataset = PRDataset(train_root, fns=None, masks=[obs_mask], noise_model=noise_model)
     val_datasets = [PRDataset(val_root, fns=None, masks=[obs_mask], noise_model=PoissonModel([alpha])) for alpha in alphas]
-
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=opt.env_batch, shuffle=True,
-        num_workers=opt.num_workers, pin_memory=True, drop_last=True)
-
     val_loaders = [torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False,
         num_workers=0, pin_memory=True) for val_dataset in val_datasets]
-
     val_names = [f'alpha_{alpha}' for alpha in alphas]
-
     val_loaders = dict(zip(val_names, val_loaders))
-
-    base_dim = 14
-    denoiser = create_denoiser(opt).to(device)
-    solver = create_solver_pr(opt, denoiser).to(device)
-    actor = create_policy_network(opt, base_dim).to(device)  # policy network
-    num_var = solver.num_var
 
     if torch.cuda.device_count() > 1:
         solver = DataParallelWithCallback(solver)
 
-    env = PREnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
     eval_env = PREnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
     evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)
 
@@ -72,6 +65,17 @@ def main(opt):
         actor.load_state_dict(actor_ckpt)
         evaluator.eval(actor, step=opt.resume_step)
         return
+    
+    # ---------------------------------------------------------------------------- #
+    #                                     Train                                    #
+    # ---------------------------------------------------------------------------- #
+    
+    train_root = data_dir / 'Images_128'
+    train_dataset = PRDataset(train_root, fns=None, masks=[obs_mask], noise_model=noise_model)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.env_batch, shuffle=True,
+                                               num_workers=opt.num_workers, pin_memory=True, drop_last=True)
+
+    env = PREnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
 
     def lr_scheduler(step):
         if step < 10000:
