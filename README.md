@@ -18,11 +18,12 @@ Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Sch√
 ## Getting Started
 
 Clone the repo, and install the `tfpnp` package first.
+For developing purpose, you are recommended to install the package with [```-e```](https://stackoverflow.com/questions/42609943/what-is-the-use-case-for-pip-install-e/59667164#59667164?newreg=9c456c4fac1e46049b0174b263f67d0b) option. 
 
 ```shell
 git clone https://github.com/Vandermode/TFPnP.git
 cd TFPnP
-pip install .
+pip install -e .
 ```
 
 ### Testing
@@ -55,7 +56,7 @@ python main.py --solver iadmm --exp pr_admm_5x6_36 --validate_interval 50 --env_
 
 If you find our work useful for your research, please consider citing the following papers :)
 
-```
+```bibtex
 @inproceedings{wei2020tuning,
   title={Tuning-free plug-and-play proximal algorithm for inverse imaging problems},
   author={Wei, Kaixuan and Aviles-Rivero, Angelica and Liang, Jingwei and Fu, Ying and Sch{\"o}nlieb, Carola-Bibiane and Huang, Hua},
