@@ -266,7 +266,7 @@ class Batch:
         if isinstance(other, Batch):
             for (k, r), v in zip(
                 self.__dict__.items(), other.__dict__.values()
-            ):  # TODO are keys consistent?
+            ):  #TODO are keys consistent?
                 if isinstance(r, Batch) and r.is_empty():
                     continue
                 else:

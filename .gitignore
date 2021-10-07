@@ -10,3 +10,5 @@ tfpnp/pnp/denoiser/pretrained
 log
 data
 *egg*
+.ssh
+.rsyncignore

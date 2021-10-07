@@ -73,7 +73,7 @@ class Evaluator(object):
 
 def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     observation = env.reset(data=data)
-    hidden = policy.init_state()
+    hidden = policy.init_state(observation.shape[0])  #TODO: add RNN support
     _, output_init, gt = env.get_images(observation)
     psnr_init = metric(output_init[0], gt[0])
 

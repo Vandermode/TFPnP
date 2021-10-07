@@ -6,9 +6,11 @@ from tfpnp.utils.transforms import complex2channel, complex2real
 
 
 class PREnv(PnPEnv):
+    # class attribute: the dimension of ob (exclude solver variable)
+    ob_base_dim = 14  
     def __init__(self, data_loader, solver, max_episode_step, device):
         super().__init__(data_loader, solver, max_episode_step, device)
-    
+        
     def get_policy_ob(self, ob):
         return torch.cat([
             complex2real(ob.variables),

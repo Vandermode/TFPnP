@@ -8,14 +8,18 @@ import time
 from ...data.batch import Batch
 from ...eval import Evaluator
 from ...env import PnPEnv
-from ...utils.misc import soft_update, hard_update
+from ...utils.misc import DataParallel, soft_update, hard_update
 from ...utils.rpm import ReplayMemory
 from ...utils.log import Logger, COLOR
+from ...policy.sync_batchnorm import DataParallelWithCallback
 
+DataParallel = DataParallelWithCallback
 
 class MDDPGTrainer:
     def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler, device,
-                 evaluator:Evaluator=None, writer:SummaryWriter = None, logger=None):
+                 evaluator:Evaluator=None, writer:SummaryWriter = None, logger=None):        
+        
+        self.data_parallel = True if torch.cuda.device_count() > 1 else False
         self.opt = opt
         self.env = env
         self.actor = actor
@@ -27,7 +31,7 @@ class MDDPGTrainer:
         self.device = device
         self.logger = Logger() if logger is None else logger
 
-        # TODO: estimate actual needed memory to prevent OOM error.
+        #TODO: estimate actual needed memory to prevent OOM error.
         self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step)
 
         self.optimizer_actor = Adam(self.actor.parameters())
@@ -36,27 +40,31 @@ class MDDPGTrainer:
         self.criterion = nn.MSELoss()   # criterion for value loss
 
         hard_update(self.critic_target, self.critic)
+        
+        self.choose_device()
 
     def train(self):
         # get initial observation
         ob = self.env.reset()
-        hidden = self.actor.init_state()
-
+        hidden = self.actor.init_state(ob.shape[0]).to(self.device)  #TODO: add RNN support
+        
         episode, episode_step = 0, 0
         time_stamp = time.time()
 
         for step in range(1, self.opt.train_steps+1):
             # select a action
+            past_hidden = hidden
             action, hidden = self.run_policy(self.env.get_policy_ob(ob), hidden)
-
+            
             # step the env
-            _, ob2_masked, _, done, _ = self.env.step(action)
+            _, ob2_masked, _, done, _ = self.env.step(action)            
             episode_step += 1
 
             # store experience to replay buffer: in a2cddpg, we only need ob actually
             self.save_experience(ob, hidden)
 
             ob = ob2_masked
+            hidden = hidden[action['idx_stop'], ...]
 
             # end of trajectory handling
             if done or (episode_step == self.opt.max_episode_step):
@@ -85,6 +93,7 @@ class MDDPGTrainer:
 
                 # reset state for next episode
                 ob = self.env.reset()
+                hidden = self.actor.init_state(ob.shape[0]).to(self.device)
                 episode += 1
                 episode_step = 0
                 time_stamp = time.time()
@@ -178,22 +187,20 @@ class MDDPGTrainer:
     def run_policy(self, ob, hidden=None):
         self.actor.eval()
         with torch.no_grad():
-            action, _, _, hidden = self.actor(ob, idx_stop=None, train=False, hidden=hidden)
+            action, _, _, hidden = self.actor(ob, None, True, hidden)
+            # action, _, _, hidden = self.actor(state=ob, idx_stop=None, train=True, hidden=hidden)
         self.actor.train()
         return action, hidden
 
     def save_experience(self, ob, hidden):
-        B = ob.shape[0]
         for k, v in ob.items():
             if isinstance(v, torch.Tensor):
                 ob[k] = ob[k].clone().detach().cpu()
 
-        if hidden is not None:
-            hidden = hidden.clone().detach().cpu()
-            ob['hidden'] = hidden
-        else:
-            ob['hidden'] = np.zeros(B)  # dummmy hidden state for non-rnn actor
-
+        hidden = hidden.clone().detach().cpu()
+        ob['hidden'] = hidden
+        
+        B = ob.shape[0]
         for i in range(B):
             self.buffer.store(ob[i])
 
@@ -205,6 +212,13 @@ class MDDPGTrainer:
         return batch
 
     def save_model(self, path, step=None):
+        if self.data_parallel:
+            self.actor = self.actor.module
+            self.critic = self.critic.module
+            self.critic_target = self.critic_target.module      
+
+        self.actor.cpu()
+        self.critic.cpu()                    
         if step is None:
             torch.save(self.actor.state_dict(), '{}/actor.pkl'.format(path))
             torch.save(self.critic.state_dict(), '{}/critic.pkl'.format(path))
@@ -213,6 +227,23 @@ class MDDPGTrainer:
                        '{}/actor_{:07d}.pkl'.format(path, step))
             torch.save(self.critic.state_dict(),
                        '{}/critic_{:07d}.pkl'.format(path, step))
+        
+        self.choose_device()
 
-    def load_model(self):
-        pass
+    def load_model(self, path, step=None):
+        if step is None:
+            self.actor.load_state_dict(torch.load('{}/actor.pkl'.format(path)))
+            self.critic.load_state_dict(torch.load('{}/critic.pkl'.format(path)))
+        else:
+            self.actor.load_state_dict(torch.load('{}/actor_{:07d}.pkl'.format(path, step)))
+            self.critic.load_state_dict(torch.load('{}/critic_{:07d}.pkl'.format(path, step)))
+
+    def choose_device(self):
+        self.actor.to(self.device)
+        self.critic.to(self.device)
+        self.critic_target.to(self.device)
+
+        if self.data_parallel:
+            self.actor = DataParallel(self.actor)
+            self.critic = DataParallel(self.critic)
+            self.critic_target = DataParallel(self.critic_target)

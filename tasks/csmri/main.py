@@ -9,6 +9,7 @@ from env import CSMRIEnv
 from dataset import CSMRIDataset, CSMRIEvalDataset
 from solver import create_solver_csmri
 
+from tfpnp.policy.sync_batchnorm import DataParallelWithCallback
 from tfpnp.policy import create_policy_network
 from tfpnp.pnp import create_denoiser
 from tfpnp.trainer import MDDPGTrainer
@@ -28,7 +29,7 @@ def main(opt):
 
     sampling_masks = ['radial_128_2', 'radial_128_4', 'radial_128_8']
     
-    base_dim = 6
+    base_dim = CSMRIEnv.ob_base_dim
     actor = create_policy_network(opt, base_dim).to(device)  # policy network
     denoiser = create_denoiser(opt).to(device)
     solver = create_solver_csmri(opt, denoiser).to(device)
@@ -37,6 +38,7 @@ def main(opt):
     # ---------------------------------------------------------------------------- #
     #                                     Valid                                    #
     # ---------------------------------------------------------------------------- #
+    writer = SummaryWriter(log_dir)
     
     sigma_n_eval = 15
     val_roots = [data_dir / 'csmri' / 'Medical7_2020' / sampling_mask / str(sigma_n_eval) for sampling_mask in sampling_masks]
@@ -46,8 +48,10 @@ def main(opt):
                                                num_workers=0, pin_memory=True) for val_dataset in val_datasets]
     val_names = [f'radial_128_2_{sigma_n_eval}', f'radial_128_4_{sigma_n_eval}', f'radial_128_8_{sigma_n_eval}']
     val_loaders = dict(zip(val_names, val_loaders))
+    
+    if torch.cuda.device_count() > 1:
+        solver = DataParallelWithCallback(solver)
 
-    writer = SummaryWriter(log_dir)
     eval_env = CSMRIEnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
     evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)
     
@@ -66,7 +70,7 @@ def main(opt):
 
     train_root = data_dir / 'Images_128'
     masks = [loadmat(mask_dir / f'{sampling_mask}.mat').get('mask') for sampling_mask in sampling_masks]
-    train_dataset = CSMRIDataset(train_root, fns=None, masks=masks, noise_model=noise_model, repeat=12*100)
+    train_dataset = CSMRIDataset(train_root, fns=None, masks=masks, noise_model=noise_model)
     
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=opt.env_batch, shuffle=True,

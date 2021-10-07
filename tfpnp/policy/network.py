@@ -132,7 +132,7 @@ class ResNetActorBase(nn.Module):
             nn.Sigmoid()
         ])
 
-    def forward(self, state, idx_stop, train, hidden=None):
+    def forward(self, state, idx_stop, train, hidden):
         x = self.actor_encoder(state)
         x = F.avg_pool2d(x, 4)
         x = x.view(x.size(0), -1)
@@ -144,7 +144,7 @@ class ResNetActorBase(nn.Module):
         dist_categorical = Categorical(action_probs)
         dist_entropy = dist_categorical.entropy().unsqueeze(1)
 
-        if idx_stop is None:  #TODO 
+        if idx_stop is None:
             if train:
                 # idx_stop = torch.argmax(action_probs, dim=1)
                 idx_stop = dist_categorical.sample()
@@ -171,8 +171,9 @@ class ResNetActorBase(nn.Module):
 
         return action
 
-    def init_state(self):
-        return None
+    #TODO add RNN support
+    def init_state(self, B):
+        return torch.zeros(B)
     
 
 class ResNetActor_ADMM(ResNetActorBase):

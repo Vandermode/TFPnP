@@ -27,7 +27,7 @@ def main(opt):
     log_dir = Path('log') / opt.exp
     mask_dir = data_dir / 'pr' / 'masks'
 
-    base_dim = 14
+    base_dim = PREnv.ob_base_dim
     denoiser = create_denoiser(opt).to(device)
     solver = create_solver_pr(opt, denoiser).to(device)
     actor = create_policy_network(opt, base_dim).to(device)  # policy network

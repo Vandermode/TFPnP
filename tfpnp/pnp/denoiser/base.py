@@ -1,33 +1,12 @@
 import os
-
 import torch
-
 from .models.unet import UNet
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-
-class Denoiser:
-    def denoise(self, x, sigma):
-        """ Denoise x with noise level sigma
-
-        Args:
-            x (torch.tensor): input image with shape [B,C,H,W]
-            sigma (torch.tensor): noise level with shape [B].
-
-        Return:
-            out (torch.tensor): denoised image with the same shape of the input
-        """
-        raise NotImplementedError
-
-    def to(self, device):
-        """ Move the denoiser to the required device
-        """
-        raise NotImplementedError
-
-
-class UNetDenoiser2D(Denoiser):
+class UNetDenoiser2D(torch.nn.Module):
     def __init__(self, ckpt_path=None):
+        super().__init__()
         if ckpt_path is None:
             ckpt_path = os.path.join(CURRENT_DIR, 'pretrained', 'unet-nm.pt')
 
@@ -39,7 +18,7 @@ class UNetDenoiser2D(Denoiser):
 
         self.net = net
 
-    def denoise(self, x, sigma):
+    def forward(self, x, sigma):
         # x: [B,1,H,W]
         N, C, H, W = x.shape
 
@@ -49,8 +28,3 @@ class UNetDenoiser2D(Denoiser):
         out = self.net(torch.cat([x, noise_map], dim=1))
 
         return torch.clamp(out, 0, 1)
-
-    def to(self, device):
-        self.net.to(device)
-        return self
-

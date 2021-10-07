@@ -1,5 +1,5 @@
 from .solver.base import PnPSolver
-from .denoiser import UNetDenoiser2D, Denoiser
+from .denoiser import UNetDenoiser2D
 
 
 def create_denoiser(opt):

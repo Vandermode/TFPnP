@@ -1,10 +1,9 @@
 import torch.nn as nn
 import torch
-from tfpnp.pnp.denoiser import Denoiser
 
 
 class PnPSolver(nn.Module):
-    def __init__(self, denoiser: Denoiser):
+    def __init__(self, denoiser):
         super().__init__()
         self.denoiser = denoiser
 
@@ -44,7 +43,7 @@ class PnPSolver(nn.Module):
         raise NotImplementedError
 
     def prox_mapping(self, x, sigma):
-        return self.denoiser.denoise(x, sigma)
+        return self.denoiser(x, sigma)
 
     @property
     def num_var(self):

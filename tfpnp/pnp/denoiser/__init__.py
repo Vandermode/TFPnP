@@ -1,1 +1,1 @@
-from .base import UNetDenoiser2D, Denoiser
+from .base import UNetDenoiser2D
