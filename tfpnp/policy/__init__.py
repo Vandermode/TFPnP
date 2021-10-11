@@ -1,4 +1,4 @@
-from .network import ResNetActor_ADMM, ResNetActor_HQS, ResNetActor_PG, ResNetActor_APG, ResNetActor_IADMM, ResNetActor_RED, ResNetActor_AMP
+from .network import ResNetActor_ADMM, ResNetActor_HQS, ResNetActor_PG, ResNetActor_APG, ResNetActor_IADMM, ResNetActor_RED, ResNetActor_AMP, ResNetActor_SPI
 
 
 _policy_map = {
@@ -8,7 +8,8 @@ _policy_map = {
     'apg': ResNetActor_APG,
     'redadmm': ResNetActor_RED,
     'amp': ResNetActor_AMP,
-    'iadmm': ResNetActor_IADMM
+    'iadmm': ResNetActor_IADMM,
+    'admm_spi': ResNetActor_SPI  
 }
 
 

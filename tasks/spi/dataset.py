@@ -1,41 +1,38 @@
 import os
 import numpy as np
 from PIL import Image
+from scipy.io import loadmat
 
 import torch 
+import torch.nn.functional as F
 from torch.utils.data.dataset import Dataset
-from scipy.io import loadmat
 
 from tfpnp.data.util import scale_height, scale_width
 from tfpnp.utils import transforms
-from tfpnp.utils.transforms import complex2real
 
 
-class CSMRIDataset(Dataset):
-    def __init__(self, datadir, fns, masks, noise_model=None, size=None, target_size=None, repeat=1):
+class SPIDataset(Dataset):
+    def __init__(self, datadir, fns, Ks, size=None, target_size=None, repeat=1):
         super().__init__()
         self.datadir = datadir
         self.fns = fns or [im for im in os.listdir(self.datadir) if im.endswith(".jpg") or im.endswith(".bmp") or im.endswith(".png") or im.endswith(".tif")]      
-        self.fns = sorted(self.fns)
-
-        self.masks = masks
-        self.noise_model = noise_model
+        self.Ks = Ks  # oversampling rates
         self.size = size
         self.repeat = repeat
         self.target_size = target_size
 
     def __getitem__(self, index):
-        mask = self.masks[np.random.randint(0, len(self.masks))]
-        mask = mask.astype(np.bool)
-        
-        sigma_n = 0
+        K = self.Ks[np.random.randint(0, len(self.Ks))]
 
-        index = index % len(self.fns)
+        if self.repeat > 1:
+            index = index % len(self.fns)
+        
         imgpath = os.path.join(self.datadir, self.fns[index])
+        name = os.path.splitext(self.fns[index])[0]
         target = Image.open(imgpath).convert('L')
 
         if self.target_size is not None:
-            ow, oh = target.size            
+            ow, oh = target.size
             target = scale_height(target, self.target_size) if ow >= oh else scale_width(target, self.target_size)        
 
         target = np.array(target, dtype=np.float32) / 255.0
@@ -46,31 +43,28 @@ class CSMRIDataset(Dataset):
             target = target.transpose((2,0,1))
         else:
             raise NotImplementedError
-
-        target = torch.from_numpy(target)
-        mask = torch.from_numpy(mask)
         
-        y0 = transforms.fft2(torch.stack([target, torch.zeros_like(target)], dim=-1))
-        # y0[:, ~mask, :] = 0
+        with torch.no_grad():
+            target = torch.from_numpy(target).float()
+            y0 = transforms.spi_forward(target[None], K, K**2, 1)
+            x0 = F.avg_pool2d(y0, K)  # simple average
 
-        if self.noise_model is not None:
-            y0, sigma_n = self.noise_model(y0)
-            
-        y0[:, ~mask, :] = 0
-
-        ATy0 = transforms.ifft2(y0)
-        x0 = ATy0.clone().detach()
-
-        output = complex2real(ATy0.clone().detach())
-        mask = mask.unsqueeze(0).bool()
-        sigma_n = np.ones_like(y0) * sigma_n
+        y0 = y0[0]
+        x0 = x0[0]        
+        output = x0.clone().detach()
+        # K = torch.ones_like(target) * K / 10.  # [0-1]
         
-        dic = {'y0': y0, 'x0': x0, 'ATy0': ATy0, 'gt': target, 'mask': mask, 'sigma_n': sigma_n, 'output': output, 'input': x0}
+        # convert to numpy array
+        y0 = np.array(y0)
+        target = np.array(target)
+        x0 = np.array(x0)
+        K = np.array(K)        
+        K = np.ones_like(target) * K / 10
 
-        # y0,x0,ATy0, sigma_n: C, W, H, 2
-        # gt, output: C, W, H
-        # mask: 1, W, H
-        
+        # dic = {'y0': y0, 'x0': x0, 'gt': target, 'K': K, 'name': name}
+        # dic = {'x0': x0, 'output': x0, 'gt': target, 'K': K, 'name': name}
+        dic = {'x0': x0, 'output': output, 'gt': target, 'K': K}
+
         return dic
 
     def __len__(self):
@@ -80,11 +74,11 @@ class CSMRIDataset(Dataset):
             return self.size
 
 
-class CSMRIEvalDataset(Dataset):
+class SPIEvalDataset(Dataset):
     def __init__(self, datadir, fns=None):
-        super(CSMRIEvalDataset, self).__init__()
+        super().__init__()
         self.datadir = datadir
-        self.fns = fns or [im for im in os.listdir(self.datadir) if im.endswith(".mat")]             
+        self.fns = fns or [im for im in os.listdir(self.datadir) if im.endswith(".mat")]      
     
     def __getitem__(self, index):
         fn = self.fns[index]
@@ -93,11 +87,11 @@ class CSMRIEvalDataset(Dataset):
         mat['name'] = mat['name'].item()
         mat.pop('__globals__', None)
         mat.pop('__header__', None)
-        mat.pop('__version__', None)
-        mat['output'] = complex2real(mat['ATy0'])
+        mat.pop('__version__', None)        
+        mat['output'] = mat['x0']
         mat['input'] = mat['x0']
-        mat['mask'] = np.expand_dims(mat['mask'], axis=0).astype('bool')
-        
+        mat['K'] = (np.ones_like(mat['gt']) * mat['K'].reshape(1, 1, 1) / 10.).astype(np.float32)  # [0-1]
+
         return mat
         
     def __len__(self):

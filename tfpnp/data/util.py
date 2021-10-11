@@ -31,6 +31,5 @@ def scale_height(img, target_height):
 
 
 def dict_to_device(dic, device):
-    dic = {k: v.to(device) if type(
-        v) == torch.Tensor else v for k, v in dic.items()}
+    dic = {k: v.to(device) if type(v) == torch.Tensor else v for k, v in dic.items()}
     return dic

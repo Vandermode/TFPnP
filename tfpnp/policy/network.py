@@ -257,13 +257,20 @@ class ResNetActor_AMP(ResNetActorBase):
         self.action_range = action_range
 
 
-class ResNetActor_SPI(ResNetActor_ADMM):
+class ResNetActor_SPI(ResNetActorBase):
     # for single photon imaging
     def __init__(self, num_aux_inputs, action_bundle, action_range: Optional[OrderedDict] = None):
-        super().__init__(num_aux_inputs+3, action_bundle, action_range)
+        super().__init__(num_aux_inputs+3, action_bundle, 2)
         self.fc_deterministic = nn.Sequential(*[
             nn.Linear(512, 64),
             nn.ReLU(),
             nn.Linear(64, action_bundle*2),
             nn.Sigmoid()
         ])
+
+        if action_range is None:
+            action_range = OrderedDict({
+                'sigma_d': {'scale': 55 / 255, 'shift': 15 / 255}, 
+                'mu': {'scale': 70, 'shift': 50}
+            })
+        self.action_range = action_range

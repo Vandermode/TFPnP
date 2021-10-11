@@ -230,8 +230,6 @@ def normalize_instance(data, eps=0.):
     return normalize(data, mean, std, eps), mean, std
 
 
-# Helper functions
-
 def roll(x, shift, dim):
     """
     Similar to np.roll but applies to PyTorch Tensors
@@ -284,7 +282,7 @@ def complex_mul(x1, x2):
     assert x1.size(-1) == 2 and x2.size(-1) == 2
 
     res = torch.stack(
-        (x1[..., 0]*x2[..., 0]-x1[..., 1]*x2[..., 1],
+        (x1[..., 0]*x2[..., 0] - x1[..., 1]*x2[..., 1],
          x1[..., 0]*x2[..., 1] + x1[..., 1]*x2[..., 0]), -1)
 
     return res
@@ -335,26 +333,166 @@ def cdp_backward(data, mask):
     return backward_data.mean(1, keepdim=True)
 
 
+def cpr_forward(data, mask, samplematrix):
+    """
+    Compute the forward model of compressive phase retrieval.
+
+    Args:
+        data (torch.Tensor): Image_data (batch_size*1*hight*weight*2).
+        mask (torch.Tensor): mask (batch_size*1*hight*weight*2), where the size of the final dimension
+            should be 2 (complex value).
+        samplematrix (torch.Tensor): undersampling matrix (m*n), n = hight*weight, m = samplingratio*n
+
+    Returns:
+        forward_data (torch.Tensor): the complex field of forward data (batch_size*1*m*2)
+    """    
+    assert mask.size(-1) == 2
+    if data.ndimension() == 4:
+        data = torch.stack([data, torch.zeros_like(data)], -1)    
+    B, _, H, W, _ = data.shape
+    m, n = samplematrix.shape
+    masked_data = complex_mul(data, mask)
+    fourier_data = torch.fft(masked_data, 2, normalized=True).view(B, 1, H*W, 2)
+    forward_data = torch.einsum('bcnk,mn->bcmk', fourier_data, samplematrix) * (n/m)**0.5
+    return forward_data
+
+
+def cpr_backward(data, mask, samplematrix):
+    """
+    Compute the backward model of cpr (the inverse operator of forward model).
+
+    Args:
+        data (torch.Tensor): Field_data (batch_size*1*m*2).
+        mask (torch.Tensor): mask (batch_size*1*hight*width*2), where the size of the final dimension
+            should be 2 (complex value).
+        samplematrix (torch.Tensor): undersampling matrix (m*n).
+
+    Returns:
+        backward_data (torch.Tensor): the complex field of backward data (batch_size*1*hight*weight*2)
+    """
+    assert mask.size(-1) == 2
+    B = data.shape[0]
+    _, _, H, W, _ = mask.shape
+    m, n = samplematrix.shape
+    back_data = torch.einsum('bcmk,mn->bcnk', data, samplematrix)
+    # print(back_data.sum())
+    # print(back_data[0, 0, 0:4, 0])    
+    Ifft_data = torch.ifft(back_data.view(B, 1, H, W, 2), 2, normalized=True)
+    # print(Ifft_data.sum())
+    # print(Ifft_data[0, 0, 0:4, 0:4, 0])
+    backward_data = complex_mul(Ifft_data, conjugate(mask)) * (n/m)**0.5    
+    
+    return backward_data
+
+
+def kron(a, b):
+    """
+    Kronecker product of matrices a and b with leading batch dimensions.
+    Batch dimensions are broadcast. The number of them mush
+    :type a: torch.Tensor
+    :type b: torch.Tensor
+    :rtype: torch.Tensor
+    """
+    siz1 = torch.Size(torch.tensor(a.shape[-2:]) * torch.tensor(b.shape[-2:]))
+    res = a.unsqueeze(-1).unsqueeze(-3) * b.unsqueeze(-2).unsqueeze(-4)
+    siz0 = res.shape[:-4]
+
+    return res.reshape(siz0 + siz1)
+
+
+def spi_forward(x, K, alpha, q):
+    ones = torch.ones(1, 1, K, K).to(x.device)
+    theta = alpha * kron(x, ones) / (K**2)
+    y = torch.poisson(theta)
+    ob = (y >= torch.ones_like(y) * q).float()
+
+    return ob
+
+
+def spi_inverse(ztilde, K1, K, mu):
+    """
+    Proximal operator "Prox\_{\frac{1}{\mu} D}" for single photon imaging
+    assert alpha == K and q == 1
+    """
+    z = torch.zeros_like(ztilde)
+
+    K0 = K**2 - K1
+    indices_0 = (K1 == 0)
+
+    z[indices_0] = ztilde[indices_0] - (K0 / mu)[indices_0]
+
+    func = lambda y: K1 / (torch.exp(y) - 1) - mu * y - K0 + mu * ztilde
+
+    indices_1 = torch.logical_not(indices_0)
+
+    # differentiable binary search
+    bmin = 1e-5 * torch.ones_like(ztilde)
+    bmax = 1.1 * torch.ones_like(ztilde)
+
+    bave = (bmin + bmax) / 2.0
+
+    for i in range(10):
+        tmp = func(bave)
+        indices_pos = torch.logical_and(tmp > 0, indices_1)
+        indices_neg = torch.logical_and(tmp < 0, indices_1)
+        indices_zero = torch.logical_and(tmp == 0, indices_1)
+        indices_0 = torch.logical_or(indices_0, indices_zero)
+        indices_1 = torch.logical_not(indices_0)
+
+        bmin[indices_pos] = bave[indices_pos]
+        bmax[indices_neg] = bave[indices_neg]
+        bave[indices_1] = (bmin[indices_1] + bmax[indices_1]) / 2.0
+
+    z[K1 != 0] = bave[K1 != 0]
+    return torch.clamp(z, 0.0, 1.0)
+
+
+
 if __name__ == '__main__':
+    # from scipy.io import loadmat
+    # from os.path import join
+
+    # maskdir = '/media/kaixuan/DATA/Papers/Code/Data/MRI/masks'
+    # sampling_masks = ['radial_128_2', 'radial_128_4',
+    #                   'radial_128_8']  # different masks
+    # obs_masks = [loadmat(join(maskdir, '{}.mat'.format(sampling_mask))).get(
+    #     'mask') for sampling_mask in sampling_masks]
+    # mask = torch.from_numpy(obs_masks[2])[None].bool()
+
+    # def csmri_normal_op(x):
+    #     y0 = fft2(x)
+    #     y0[:, ~mask, :] = 0
+    #     ATy0 = ifft2(y0)
+    #     return ATy0
+
+    # # device = torch.device("cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # x = torch.randn((1, 1, 128, 128, 2), device=device)
+
+    # opnorm = power_method_opnorm(csmri_normal_op, x, 10)
+    # print(opnorm)  # nearly equal to 1
+
+    ######################
+    
     from scipy.io import loadmat
-    from os.path import join
-
-    maskdir = '/media/kaixuan/DATA/Papers/Code/Data/MRI/masks'
-    sampling_masks = ['radial_128_2', 'radial_128_4',
-                      'radial_128_8']  # different masks
-    obs_masks = [loadmat(join(maskdir, '{}.mat'.format(sampling_mask))).get(
-        'mask') for sampling_mask in sampling_masks]
-    mask = torch.from_numpy(obs_masks[2])[None].bool()
-
-    def csmri_normal_op(x):
-        y0 = fft2(x)
-        y0[:, ~mask, :] = 0
-        ATy0 = ifft2(y0)
-        return ATy0
-
-    # device = torch.device("cpu")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    x = torch.randn((1, 1, 128, 128, 2), device=device)
-
-    opnorm = power_method_opnorm(csmri_normal_op, x, 10)
-    print(opnorm)  # nearly equal to 1
+    from pathlib import Path
+    
+    basedir = Path('/home/kaixuan/code/Data/PR/pr')
+    data = loadmat(basedir / 'data/Test_prdeep_128.mat')['labels']
+    mask = loadmat(basedir / 'sampling_matrix/mask_0_128.mat')['Mask']
+    samplematrix = loadmat(basedir / 'sampling_matrix/SampM_30_128.mat')['SubsampM']
+    
+    data = torch.from_numpy(data).float().unsqueeze_(1)
+    mask = torch.from_numpy(mask)
+    mask = torch.stack([mask.real, mask.imag], -1).float()[None][None]
+    samplematrix = torch.from_numpy(samplematrix).float()
+        
+    ob = cpr_forward(data, mask, samplematrix)    
+    print(ob[0, 0, 0:10, 0])
+    backward_data = cpr_backward(ob, mask, samplematrix)
+    print(backward_data[0, 0, :4, :4, 0])
+    
+    print(ob.sum())
+    print(backward_data.sum())
+    
+    pass

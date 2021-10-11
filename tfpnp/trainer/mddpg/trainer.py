@@ -46,14 +46,12 @@ class MDDPGTrainer:
     def train(self):
         # get initial observation
         ob = self.env.reset()
-        hidden = self.actor.init_state(ob.shape[0]).to(self.device)  #TODO: add RNN support
-        
+        hidden = hidden_full = self.actor.init_state(ob.shape[0]).to(self.device)  #TODO: add RNN support
         episode, episode_step = 0, 0
         time_stamp = time.time()
 
         for step in range(1, self.opt.train_steps+1):
             # select a action
-            past_hidden = hidden
             action, hidden = self.run_policy(self.env.get_policy_ob(ob), hidden)
             
             # step the env
@@ -64,10 +62,11 @@ class MDDPGTrainer:
             self.save_experience(ob, hidden)
 
             ob = ob2_masked
-            hidden = hidden[action['idx_stop'], ...]
+            hidden = hidden_full[self.env.idx_left, ...]
 
             # end of trajectory handling
             if done or (episode_step == self.opt.max_episode_step):
+                
                 if step > self.opt.warmup:
                     if self.evaluator is not None and (episode+1) % self.opt.validate_interval == 0:
                         self.evaluator.eval(self.actor, step)
@@ -93,7 +92,7 @@ class MDDPGTrainer:
 
                 # reset state for next episode
                 ob = self.env.reset()
-                hidden = self.actor.init_state(ob.shape[0]).to(self.device)
+                hidden = hidden_full = self.actor.init_state(ob.shape[0]).to(self.device)
                 episode += 1
                 episode_step = 0
                 time_stamp = time.time()
