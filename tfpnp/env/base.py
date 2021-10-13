@@ -42,14 +42,12 @@ class DifferentiableEnv(Env):
 
 
 class PnPEnv(DifferentiableEnv):
-    """ 
-    """
-    
-    def __init__(self, data_loader:DataLoader , solver: PnPSolver, max_episode_step, device):
+    def __init__(self, data_loader: DataLoader, solver: PnPSolver, max_episode_step, device, data_transformer=None):
         super(PnPEnv, self).__init__()
         self.data_loader = data_loader
         self.data_iterator = iter(data_loader) if data_loader is not None else None
         self.device = device
+        self.data_transformer = data_transformer
 
         self.solver = solver
 
@@ -132,6 +130,8 @@ class PnPEnv(DifferentiableEnv):
                 data = self.data_iterator.next()
 
         # move data to device
+        if self.data_transformer is not None:
+            data = self.data_transformer(data)
         data = dict_to_device(data, self.device)
 
         # get inital solver states

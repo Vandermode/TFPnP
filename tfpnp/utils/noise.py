@@ -29,7 +29,7 @@ class GaussianModelD:  # discrete noise levels
             sigma = np.random.choice(self.sigmas) # random is important
 
         sigma = sigma / 255.
-        y = x + torch.randn(*x.shape) * sigma      
+        y = x + torch.randn(*x.shape) * sigma
               
         return y, sigma
 
@@ -42,7 +42,7 @@ class GaussianModelP:  # noise percentages
         
     def __call__(self, x):
         if not self.batch_mode:
-            sigma = np.random.choice(self.sigmas_p)
+            sigma = np.random.choice(self.sigmas_p).astype(np.float32)
             y = x + torch.randn_like(x) * torch.mean(torch.abs(x)) * sigma
         else:
             N = x.shape[0]

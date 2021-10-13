@@ -1,30 +1,12 @@
-"""
-Copyright (c) Facebook, Inc. and its affiliates.
-
-This source code is licensed under the MIT license found in the
-LICENSE file in the root directory of this source tree.
-"""
-
 import numpy as np
 import torch
 
+torch_fft = torch.fft
+torch_ifft = torch.ifft 
 
-def power_method_opnorm(normal_op, x, n_iter=10):
-    def _normalize(x):
-        size = x.size()
-        x = x.view(size[0], -1)
-        norm = torch.norm(x, dim=1)
-        x /= norm.view(-1, 1)
-        return x.view(*size), torch.max(norm).item()
-    
-    with torch.no_grad():
-        x, _ = _normalize(x)
-
-        for i in range(n_iter):
-            next_x = normal_op(x)
-            x, v = _normalize(next_x)
-
-    return v**0.5
+# ---------------------------------------------------------------------------- #
+#                                   CSMRI                                      #
+# ---------------------------------------------------------------------------- #
 
 
 def real2complex(x):
@@ -97,7 +79,7 @@ def fft2(data):
     """
     assert data.size(-1) == 2
     data = ifftshift(data, dim=(-3, -2))
-    data = torch.fft(data, 2, normalized=True)
+    data = torch_fft(data, 2, normalized=True)
     data = fftshift(data, dim=(-3, -2))
     return data
 
@@ -116,7 +98,7 @@ def ifft2(data):
     """
     assert data.size(-1) == 2
     data = ifftshift(data, dim=(-3, -2))
-    data = torch.ifft(data, 2, normalized=True)
+    data = torch_ifft(data, 2, normalized=True)
     data = fftshift(data, dim=(-3, -2))
     return data
 
@@ -292,6 +274,11 @@ def conjugate(x):
     return torch.stack([x[..., 0], -x[..., 1]], -1)
 
 
+# ---------------------------------------------------------------------------- #
+#                                     PR                                       #
+# ---------------------------------------------------------------------------- #
+
+
 def cdp_forward(data, mask):
     """
     Compute the forward model of cdp.
@@ -400,6 +387,11 @@ def kron(a, b):
     return res.reshape(siz0 + siz1)
 
 
+# ---------------------------------------------------------------------------- #
+#                                     SPI                                      #
+# ---------------------------------------------------------------------------- #
+
+
 def spi_forward(x, K, alpha, q):
     ones = torch.ones(1, 1, K, K).to(x.device)
     theta = alpha * kron(x, ones) / (K**2)
@@ -447,6 +439,75 @@ def spi_inverse(ztilde, K1, K, mu):
     return torch.clamp(z, 0.0, 1.0)
 
 
+# ---------------------------------------------------------------------------- #
+#                                     CT                                       #
+# ---------------------------------------------------------------------------- #
+enable_CT = True
+if enable_CT:
+    from torch_radon import Radon
+    def power_method_opnorm(normal_op, x, n_iter=10):
+        def _normalize(x):
+            size = x.size()
+            x = x.view(size[0], -1)
+            norm = torch.norm(x, dim=1)
+            x /= norm.view(-1, 1)
+            return x.view(*size), torch.max(norm).item()
+        
+        with torch.no_grad():
+            x, _ = _normalize(x)
+
+            for i in range(n_iter):
+                next_x = normal_op(x)
+                x, v = _normalize(next_x)
+
+        return v**0.5
+
+
+    class Radon_norm(Radon):
+        def __init__(self, resolution, angles, det_count=-1, det_spacing=1.0, clip_to_circle=False, opnorm=None):
+            super(Radon_norm, self).__init__(resolution, angles, det_count, det_spacing, clip_to_circle)
+            if opnorm is None:
+                normal_op = lambda x: super(Radon_norm, self).backward(super(Radon_norm, self).forward(x))
+                x = torch.randn(1, 1, resolution, resolution).cuda()
+                opnorm = power_method_opnorm(normal_op, x, n_iter=10)
+            self.opnorm = opnorm
+            self.resolution = resolution
+            self.view = angles.shape[0]
+
+        def backprojection_norm(self, sinogram):
+            return self.backprojection(sinogram) / self.opnorm**2
+
+        def filter_backprojection(self, sinogram):
+            sinogram = self.filter_sinogram(sinogram, filter_name='ramp')
+            return self.backprojection(sinogram)
+
+        def normal_operator(self, x):
+            return self.backprojection_norm(self.forward(x))
+
+
+    def create_radon(resolution, view, opnorm):
+        angles = torch.linspace(0, 179/180*np.pi, view)
+        det_count = int(np.ceil(np.sqrt(2) * resolution))
+        radon = Radon_norm(resolution, angles, det_count, opnorm=opnorm)
+        return radon
+
+
+    class RadonGenerator:
+        def __init__(self):
+            self.opnorms = {}
+
+        def __call__(self, resolution, view):
+            key = (resolution, view)
+            if key in self.opnorms:
+                opnorm = self.opnorms[key]
+                radon = create_radon(resolution, view, opnorm)
+            else:
+                radon = create_radon(resolution, view, opnorm=None)
+                opnorm = radon.opnorm
+                self.opnorms[key] = opnorm
+
+            return radon
+    
 
 if __name__ == '__main__':
     # from scipy.io import loadmat

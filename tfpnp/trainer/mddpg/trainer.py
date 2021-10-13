@@ -242,7 +242,7 @@ class MDDPGTrainer:
         self.critic.to(self.device)
         self.critic_target.to(self.device)
 
-        if self.data_parallel:
+        if self.data_parallel and type(self.actor) is not DataParallel:
             self.actor = DataParallel(self.actor)
             self.critic = DataParallel(self.critic)
             self.critic_target = DataParallel(self.critic_target)
