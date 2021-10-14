@@ -6,23 +6,23 @@ import torch
 from torch.utils.data.dataset import Dataset
 from scipy.io import loadmat
 
-from tfpnp.data.util import scale_height, scale_width
+from tfpnp.data.util import scale_height, scale_width, data_augment
 from tfpnp.utils import transforms
 from tfpnp.utils.transforms import complex2real
 
 
 class CSMRIDataset(Dataset):
-    def __init__(self, datadir, fns, masks, noise_model=None, size=None, target_size=None, repeat=1):
+    def __init__(self, datadir, fns, masks, noise_model=None, size=None, target_size=None, repeat=1, augment=False):
         super().__init__()
         self.datadir = datadir
         self.fns = fns or [im for im in os.listdir(self.datadir) if im.endswith(".jpg") or im.endswith(".bmp") or im.endswith(".png") or im.endswith(".tif")]      
-        self.fns = sorted(self.fns)
-
+        self.fns = sorted(self.fns)        
         self.masks = masks
         self.noise_model = noise_model
         self.size = size
         self.repeat = repeat
         self.target_size = target_size
+        self.augment = augment
 
     def __getitem__(self, index):
         mask = self.masks[np.random.randint(0, len(self.masks))]
@@ -46,12 +46,14 @@ class CSMRIDataset(Dataset):
             target = target.transpose((2,0,1))
         else:
             raise NotImplementedError
+        
+        if self.augment:
+            target = data_augment(target)
 
         target = torch.from_numpy(target)
         mask = torch.from_numpy(mask)
         
         y0 = transforms.fft2(torch.stack([target, torch.zeros_like(target)], dim=-1))
-        # y0[:, ~mask, :] = 0
 
         if self.noise_model is not None:
             y0, sigma_n = self.noise_model(y0)

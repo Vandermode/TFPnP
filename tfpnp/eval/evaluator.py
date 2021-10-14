@@ -53,14 +53,13 @@ class Evaluator(object):
                     base_dir = join(self.savedir, name, data_name, str(step))
                     os.makedirs(base_dir, exist_ok=True)
 
-                    save_img(input, join(base_dir, 'input.png'))
+                    # save_img(input, join(base_dir, 'input.png'))
                     save_img(output_init, join(base_dir, 'output_init.png'))
                     save_img(output, join(base_dir, 'output.png'))
                     save_img(gt, join(base_dir, 'gt.png'))
 
                     for k, v in action_seqs.items():
-                        seq_plot(v, 'step', k, save_path=join(
-                            base_dir, k+'.png'))
+                        seq_plot(v[0], 'step', k, save_path=join(base_dir, k+'.png'))
 
                     seq_plot(psnr_seq, 'step', 'psnr',
                              save_path=join(base_dir, 'psnr.png'))
@@ -74,13 +73,14 @@ class Evaluator(object):
 def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     observation = env.reset(data=data)
     hidden = policy.init_state(observation.shape[0])  #TODO: add RNN support
-    _, output_init, gt = env.get_images(observation)
+    _, output_init, gt = env.get_images(observation)    
+    
     psnr_init = metric(output_init[0], gt[0])
 
     episode_steps = 0
     episode_reward = np.zeros(1)
 
-    psnr_seq = []
+    psnr_seq = [psnr_init]
     reward_seq = [0]
     action_seqs = {}
 
@@ -102,11 +102,12 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
         psnr_seq.append(cur_psnr.item())
         reward_seq.append(reward.item())
 
-        for k, v in action.items():
+        action.pop('idx_stop', None)
+        for k, v in action.items():            
             if k not in action_seqs.keys():
                 action_seqs[k] = []
             for i in range(v.shape[0]):
-                action_seqs[k].append(v[i])
+                action_seqs[k].append(list(v[i].detach().cpu().numpy()))
 
         if done:
             break

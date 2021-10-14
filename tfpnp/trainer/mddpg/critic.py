@@ -124,7 +124,8 @@ class ResNet_wobn(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        x = F.avg_pool2d(x, 4)
+        # x = F.avg_pool2d(x, 4)
+        x = F.adaptive_avg_pool2d(x, 1)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x

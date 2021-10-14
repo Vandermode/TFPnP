@@ -442,7 +442,7 @@ def spi_inverse(ztilde, K1, K, mu):
 # ---------------------------------------------------------------------------- #
 #                                     CT                                       #
 # ---------------------------------------------------------------------------- #
-enable_CT = True
+enable_CT = False
 if enable_CT:
     from torch_radon import Radon
     def power_method_opnorm(normal_op, x, n_iter=10):

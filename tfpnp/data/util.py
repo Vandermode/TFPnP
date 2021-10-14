@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+
 from PIL import Image
 import math
 
@@ -29,6 +31,18 @@ def scale_height(img, target_height):
     w = math.ceil(w / 2.) * 2  # round up to even
     return img.resize((w, h), Image.BICUBIC)
 
+
+def data_augment(img):
+    C, H, W = img.shape    
+    if np.random.randint(2, size=1)[0] == 1:  # random flip
+        img = np.flip(img, axis=1)
+    if np.random.randint(2, size=1)[0] == 1:
+        img = np.flip(img, axis=2)
+    if np.random.randint(2, size=1)[0] == 1:  # random transpose
+        img = np.transpose(img, (0, 2, 1))        
+    img = np.ascontiguousarray(img)
+    return img
+    
 
 def dict_to_device(dic, device):
     dic = {k: v.to(device) if type(v) == torch.Tensor else v for k, v in dic.items()}

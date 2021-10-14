@@ -6,6 +6,7 @@ train_log
 tfpnp_old
 .idea
 checkpoints
+results
 tfpnp/pnp/denoiser/pretrained
 log
 data
