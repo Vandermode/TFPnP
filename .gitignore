@@ -1,7 +1,10 @@
 __pycache__
 .vscode
 model
-examples/csmri/data/*
+tasks/csmri/data
+tasks/pr/data
+tasks/spi/data
+tasks/ct/data
 train_log
 tfpnp_old
 .idea
@@ -9,7 +12,6 @@ checkpoints
 results
 tfpnp/pnp/denoiser/pretrained
 log
-data
 *egg*
 .ssh
 .rsyncignore

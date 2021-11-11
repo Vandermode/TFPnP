@@ -1,13 +1,12 @@
 # TFPnP
-*This codebase is still under reconstruction*    
-[Project Page]() | [Paper (ICML version)](https://arxiv.org/abs/2002.09611) | [Paper (Journal version)](https://arxiv.org/abs/2012.05703) | [Pretrained Model](https://1drv.ms/u/s!AomvdxwcLmYImAxUxtn5DtMEjFbs?e=phu6Pu)
+[Project Page]() | [Paper (ICML version)](https://arxiv.org/abs/2002.09611) | [Paper (Journal version)](https://arxiv.org/abs/2012.05703) | [Pretrained Model](https://1drv.ms/u/s!AqddfvhavTRijUiNda2MBmaYHJVL?e=VhYojg)
 
 **Tuning-free Plug-and-Play Proximal Algorithm for Inverse Imaging Problems, ICML 2020 ([Award](https://icml.cc/Conferences/2020/Awards) Paper)** 
 
 Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Schönlieb, Hua Huang
 
 ## :sparkles: News
-
+- 2021-11-11: Release the full version with new applications of sparse-view CT (ct) and single-photon imaging (spi). 
 - 2021-9-25: Release the initial version. It now includes all sources (code and data) to reproduce our results on the ICML paper. More applications (presented on our journal version) are coming soon. 
 
 
@@ -28,7 +27,7 @@ pip install -e .
 
 ### Testing
 
-1. Download the test data and pretrained models from [Link](https://1drv.ms/u/s!AomvdxwcLmYImAxUxtn5DtMEjFbs?e=phu6Pu), unzip and put them in `tasks/[task]/data` and `tasks/[task]/checkpoints`.
+1. Download the test data and pretrained models (checkpoints and denoiser) from [Link](https://1drv.ms/u/s!AqddfvhavTRijUiNda2MBmaYHJVL?e=VhYojg), unzip and put them into `tasks/[task]/data`, `tasks/[task]/checkpoints` and `tfpnp/pnp/denoiser/pretrained`
 2. Run the test via the following command. (You can find more testing commands in `script.sh` of each task directory)
 
 ```shell
@@ -41,7 +40,7 @@ python main.py --solver iadmm --exp pr_admm_5x6_36 --eval --max_episode_step 6 -
 
 ### Training
 
-1. Download the training data from [Link](https://1drv.ms/u/s!AomvdxwcLmYImAxUxtn5DtMEjFbs?e=phu6Pu), unzip and put it in `tasks/[task]/data`.
+1. Download the training data from [Link](https://1drv.ms/u/s!AqddfvhavTRijUiNda2MBmaYHJVL?e=VhYojg), unzip and put it in `tasks/[task]/data`.
 2. Run the following command to retrain the model. You need about 20G video memory for the training.
 
 ```shell

@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 from os.path import join
 
@@ -41,12 +42,12 @@ class Evaluator(object):
                                                                    loop_penalty=self.opt.loop_penalty,
                                                                    metric=self.metric)
 
-                episode_steps, episode_reward, psnr_seq, reward_seq, action_seqs = info
+                episode_steps, episode_reward, psnr_seq, reward_seq, action_seqs, run_time = info
                 input, output_init, output, gt = imgs
 
                 # save metric
                 metric_tracker.update({'iters': episode_steps, 'acc_reward': episode_reward,
-                                       'psnr_init': psnr_init, 'psnr': psnr_finished})
+                                       'psnr_init': psnr_init, 'psnr': psnr_finished, 'time': run_time})
 
                 # save imgs
                 if self.savedir is not None:
@@ -54,8 +55,8 @@ class Evaluator(object):
                     os.makedirs(base_dir, exist_ok=True)
 
                     # save_img(input, join(base_dir, 'input.png'))
-                    save_img(output_init, join(base_dir, 'output_init.png'))
-                    save_img(output, join(base_dir, 'output.png'))
+                    # save_img(output_init, join(base_dir, 'output_init.png'))
+                    save_img(output, join(base_dir, f'output_{psnr_finished: .2f}.png'))
                     save_img(gt, join(base_dir, 'gt.png'))
 
                     for k, v in action_seqs.items():
@@ -66,8 +67,7 @@ class Evaluator(object):
                     seq_plot(reward_seq, 'step', 'reward',
                              save_path=join(base_dir, 'reward.png'))
 
-            prRed('Step_{:07d}: {} | {}'.format(
-                step - 1, name, metric_tracker))
+            prRed('Step_{:07d}: {} | {}'.format(step - 1, name, metric_tracker))
 
 
 def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
@@ -85,6 +85,7 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     action_seqs = {}
 
     ob = observation
+    time_stamp = time.time()
     while episode_steps < max_episode_step:
         action, _, _, hidden = policy(env.get_policy_ob(ob), idx_stop=None, train=False, hidden=hidden)
                 
@@ -102,7 +103,7 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
         psnr_seq.append(cur_psnr.item())
         reward_seq.append(reward.item())
 
-        action.pop('idx_stop', None)
+        action.pop('idx_stop')
         for k, v in action.items():            
             if k not in action_seqs.keys():
                 action_seqs[k] = []
@@ -111,11 +112,12 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
 
         if done:
             break
-
+        
+    run_time = time.time() - time_stamp
     input, output, gt = env.get_images(ob)
     psnr_finished = metric(output[0], gt[0])
 
-    info = (episode_steps, episode_reward, psnr_seq, reward_seq, action_seqs)
+    info = (episode_steps, episode_reward, psnr_seq, reward_seq, action_seqs, run_time)
     imgs = (input[0], output_init[0], output[0], gt[0])
 
     return psnr_init, psnr_finished, info, imgs

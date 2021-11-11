@@ -17,7 +17,7 @@ DataParallel = DataParallelWithCallback
 
 class MDDPGTrainer:
     def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler, device,
-                 evaluator:Evaluator=None, writer:SummaryWriter = None, logger=None):        
+                 evaluator:Evaluator=None, writer:SummaryWriter = None, logger=None, buffer=None):        
         
         self.data_parallel = True if torch.cuda.device_count() > 1 else False
         self.opt = opt
@@ -32,7 +32,7 @@ class MDDPGTrainer:
         self.logger = Logger() if logger is None else logger
 
         #TODO: estimate actual needed memory to prevent OOM error.
-        self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step)
+        self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step) if buffer is None else buffer
 
         self.optimizer_actor = Adam(self.actor.parameters())
         self.optimizer_critic = Adam(self.critic.parameters())
@@ -46,6 +46,7 @@ class MDDPGTrainer:
     def train(self):
         # get initial observation
         ob = self.env.reset()
+
         hidden = hidden_full = self.actor.init_state(ob.shape[0]).to(self.device)  #TODO: add RNN support
         episode, episode_step = 0, 0
         time_stamp = time.time()

@@ -320,7 +320,7 @@ def cdp_backward(data, mask):
     return backward_data.mean(1, keepdim=True)
 
 
-def cpr_forward(data, mask, samplematrix):
+def cpr_forward(data, mask, sample_matrix):
     """
     Compute the forward model of compressive phase retrieval.
 
@@ -328,7 +328,7 @@ def cpr_forward(data, mask, samplematrix):
         data (torch.Tensor): Image_data (batch_size*1*hight*weight*2).
         mask (torch.Tensor): mask (batch_size*1*hight*weight*2), where the size of the final dimension
             should be 2 (complex value).
-        samplematrix (torch.Tensor): undersampling matrix (m*n), n = hight*weight, m = samplingratio*n
+        sample_matrix (torch.Tensor): undersampling matrix (m*n), n = hight*weight, m = samplingratio*n
 
     Returns:
         forward_data (torch.Tensor): the complex field of forward data (batch_size*1*m*2)
@@ -337,14 +337,14 @@ def cpr_forward(data, mask, samplematrix):
     if data.ndimension() == 4:
         data = torch.stack([data, torch.zeros_like(data)], -1)    
     B, _, H, W, _ = data.shape
-    m, n = samplematrix.shape
-    masked_data = complex_mul(data, mask)
+    m, n = sample_matrix.shape
+    masked_data = complex_mul(data, mask)    
     fourier_data = torch.fft(masked_data, 2, normalized=True).view(B, 1, H*W, 2)
-    forward_data = torch.einsum('bcnk,mn->bcmk', fourier_data, samplematrix) * (n/m)**0.5
+    forward_data = torch.einsum('bcnk,mn->bcmk', fourier_data, sample_matrix) * (n/m)**0.5
     return forward_data
 
 
-def cpr_backward(data, mask, samplematrix):
+def cpr_backward(data, mask, sample_matrix):
     """
     Compute the backward model of cpr (the inverse operator of forward model).
 
@@ -352,7 +352,7 @@ def cpr_backward(data, mask, samplematrix):
         data (torch.Tensor): Field_data (batch_size*1*m*2).
         mask (torch.Tensor): mask (batch_size*1*hight*width*2), where the size of the final dimension
             should be 2 (complex value).
-        samplematrix (torch.Tensor): undersampling matrix (m*n).
+        sample_matrix (torch.Tensor): undersampling matrix (m*n).
 
     Returns:
         backward_data (torch.Tensor): the complex field of backward data (batch_size*1*hight*weight*2)
@@ -360,8 +360,8 @@ def cpr_backward(data, mask, samplematrix):
     assert mask.size(-1) == 2
     B = data.shape[0]
     _, _, H, W, _ = mask.shape
-    m, n = samplematrix.shape
-    back_data = torch.einsum('bcmk,mn->bcnk', data, samplematrix)
+    m, n = sample_matrix.shape
+    back_data = torch.einsum('bcmk,mn->bcnk', data, sample_matrix)
     # print(back_data.sum())
     # print(back_data[0, 0, 0:4, 0])    
     Ifft_data = torch.ifft(back_data.view(B, 1, H, W, 2), 2, normalized=True)
@@ -541,16 +541,16 @@ if __name__ == '__main__':
     basedir = Path('/home/kaixuan/code/Data/PR/pr')
     data = loadmat(basedir / 'data/Test_prdeep_128.mat')['labels']
     mask = loadmat(basedir / 'sampling_matrix/mask_0_128.mat')['Mask']
-    samplematrix = loadmat(basedir / 'sampling_matrix/SampM_30_128.mat')['SubsampM']
+    sample_matrix = loadmat(basedir / 'sampling_matrix/SampM_30_128.mat')['SubsampM']
     
     data = torch.from_numpy(data).float().unsqueeze_(1)
     mask = torch.from_numpy(mask)
     mask = torch.stack([mask.real, mask.imag], -1).float()[None][None]
-    samplematrix = torch.from_numpy(samplematrix).float()
+    sample_matrix = torch.from_numpy(sample_matrix).float()
         
-    ob = cpr_forward(data, mask, samplematrix)    
+    ob = cpr_forward(data, mask, sample_matrix)    
     print(ob[0, 0, 0:10, 0])
-    backward_data = cpr_backward(ob, mask, samplematrix)
+    backward_data = cpr_backward(ob, mask, sample_matrix)
     print(backward_data[0, 0, :4, :4, 0])
     
     print(ob.sum())

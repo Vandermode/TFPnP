@@ -5,9 +5,10 @@ from tensorboardX import SummaryWriter
 from pathlib import Path
 
 from env import CTEnv
-from dataset import CT_transformer, CTDataset, ImageFolder
+from dataset import CT_transform, CTDataset
 from solver import create_solver_ct
 
+from tfpnp.data.dataset import ImageFolder
 from tfpnp.policy.sync_batchnorm import DataParallelWithCallback
 from tfpnp.policy import create_policy_network
 from tfpnp.pnp import create_denoiser
@@ -72,8 +73,8 @@ def main(opt):
         train_dataset, batch_size=opt.env_batch, shuffle=True,
         num_workers=opt.num_workers, pin_memory=True, drop_last=True)
 
-    data_transformer = CT_transformer(view, noise_model)
-    env = CTEnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device, data_transformer=data_transformer)
+    data_transform = CT_transform(view, noise_model)
+    env = CTEnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device, data_transform=data_transform)
 
     def lr_scheduler(step):
         if step < 10000:
