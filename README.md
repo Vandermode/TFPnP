@@ -6,6 +6,7 @@
 Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Schönlieb, Hua Huang
 
 ## :sparkles: News
+- 2021-12-01: The comprehensive version of this work was accepted to *Journal of Machine Learning Research* (JMLR)!
 - 2021-11-11: Release the full version with new applications of sparse-view CT (ct) and single-photon imaging (spi). 
 - 2021-9-25: Release the initial version. It now includes all sources (code and data) to reproduce our results on the ICML paper. More applications (presented on our journal version) are coming soon. 
 
