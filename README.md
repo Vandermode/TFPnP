@@ -6,7 +6,7 @@
 Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Schönlieb, Hua Huang
 
 ## :sparkles: News
-- 2022-2-04: The JMLR version is now available [online](http://jmlr.org/papers/v23/20-1297.html).
+- 2022-2-04: The official JMLR version is now available [online](http://jmlr.org/papers/v23/20-1297.html).
 - 2021-12-01: The comprehensive version of this work was accepted to *Journal of Machine Learning Research* (JMLR)!
 - 2021-11-11: Release the full version with new applications of sparse-view CT (ct) and single-photon imaging (spi). 
 - 2021-9-25: Release the initial version. It now includes all sources (code and data) to reproduce our results on the ICML paper. More applications (presented on our journal version) are coming soon. 
@@ -67,11 +67,15 @@ If you find our work useful for your research, please consider citing the follow
   organization={PMLR}
 }
 
-@inproceedings{wei2020tfpnp,
-  title={TFPnP: Tuning-free plug-and-play proximal algorithm with applications to inverse imaging problems},
-  author={Wei, Kaixuan and Aviles-Rivero, Angelica and Liang, Jingwei and Fu, Ying and Huang, Hua and Sch{\"o}nlieb, Carola-Bibiane},
-  journal={arXiv preprint arXiv:2012.05703},
-  year={2020}
+@article{JMLR:v23:20-1297,
+  author  = {Kaixuan Wei and Angelica Aviles-Rivero and Jingwei Liang and Ying Fu and Hua Huang and Carola-Bibiane SchÃ¶nlieb},
+  title   = {TFPnP: Tuning-free Plug-and-Play Proximal Algorithms with Applications to Inverse Imaging Problems},
+  journal = {Journal of Machine Learning Research},
+  year    = {2022},
+  volume  = {23},
+  number  = {16},
+  pages   = {1-48},
+  url     = {http://jmlr.org/papers/v23/20-1297.html}
 }
 ```
 
