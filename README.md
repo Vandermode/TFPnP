@@ -1,11 +1,12 @@
 # TFPnP
-[Project Page]() | [Paper (ICML version)](https://arxiv.org/abs/2002.09611) | [Paper (Journal version)](https://arxiv.org/abs/2012.05703) | [Pretrained Model](https://1drv.ms/u/s!AqddfvhavTRijUiNda2MBmaYHJVL?e=VhYojg)
+[Project Page](https://proceedings.mlr.press/v119/wei20b) | [Paper (ICML version)](https://proceedings.mlr.press/v119/wei20b) | [Paper (JMLR version)](http://jmlr.org/papers/v23/20-1297.html) | [Pretrained Model](https://1drv.ms/u/s!AqddfvhavTRijUiNda2MBmaYHJVL?e=VhYojg)
 
 **Tuning-free Plug-and-Play Proximal Algorithm for Inverse Imaging Problems, ICML 2020 ([Award](https://icml.cc/Conferences/2020/Awards) Paper)** 
 
 Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Schönlieb, Hua Huang
 
 ## :sparkles: News
+- 2022-2-04: The JMLR version is now available [online](http://jmlr.org/papers/v23/20-1297.html).
 - 2021-12-01: The comprehensive version of this work was accepted to *Journal of Machine Learning Research* (JMLR)!
 - 2021-11-11: Release the full version with new applications of sparse-view CT (ct) and single-photon imaging (spi). 
 - 2021-9-25: Release the initial version. It now includes all sources (code and data) to reproduce our results on the ICML paper. More applications (presented on our journal version) are coming soon. 
