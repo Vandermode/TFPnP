@@ -58,10 +58,15 @@ class Evaluator(object):
                     # save_img(output_init, join(base_dir, 'output_init.png'))
                     save_img(output, join(base_dir, f'output_{psnr_finished: .2f}.png'))
                     save_img(gt, join(base_dir, 'gt.png'))
-
+                    
+                    params = {}
                     for k, v in action_seqs.items():
-                        seq_plot(v[0], 'step', k, save_path=join(base_dir, k+'.png'))
-
+                        seq_plot(v, 'step', k, save_path=join(base_dir, k+'.png'))
+                        params[k] = [float(x) for x in v]
+                        # print(v)
+                    import json
+                    json.dump(params, open(join(base_dir, 'action_seqs.json'), 'w'))
+                    
                     seq_plot(psnr_seq, 'step', 'psnr',
                              save_path=join(base_dir, 'psnr.png'))
                     seq_plot(reward_seq, 'step', 'reward',
@@ -108,8 +113,7 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
             if k not in action_seqs.keys():
                 action_seqs[k] = []
             for i in range(v.shape[0]):
-                action_seqs[k].append(list(v[i].detach().cpu().numpy()))
-
+                action_seqs[k] += list(v[i].detach().cpu().numpy())
         if done:
             break
         

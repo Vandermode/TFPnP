@@ -52,7 +52,7 @@ def main(opt):
         solver = DataParallelWithCallback(solver)
 
     eval_env = CTEnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
-    evaluator = Evaluator(opt, eval_env, val_loaders, writer, device)
+    evaluator = Evaluator(opt, eval_env, val_loaders, writer, device, savedir='results')
     
     if opt.eval:
         actor_ckpt = torch.load(opt.resume)
