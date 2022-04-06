@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
-import numpy as np
 from torch.optim.adam import Adam
 from tensorboardX.writer import SummaryWriter
 import time
+import os
 
 from ...data.batch import Batch
 from ...eval import Evaluator
@@ -16,8 +16,9 @@ from ...policy.sync_batchnorm import DataParallelWithCallback
 DataParallel = DataParallelWithCallback
 
 class MDDPGTrainer:
-    def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler, device,
-                 evaluator:Evaluator=None, writer:SummaryWriter = None, logger=None, buffer=None):        
+    def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler, 
+                 device, log_dir, evaluator:Evaluator=None, 
+                 enable_tensorboard=False, logger=None, buffer=None):        
         
         self.data_parallel = True if torch.cuda.device_count() > 1 else False
         self.opt = opt
@@ -27,9 +28,9 @@ class MDDPGTrainer:
         self.critic_target = critic_target
         self.lr_scheduler = lr_scheduler
         self.evaluator = evaluator
-        self.writer = writer
+        self.writer = SummaryWriter(os.path.join(log_dir, 'tfborad')) if enable_tensorboard else None
         self.device = device
-        self.logger = Logger() if logger is None else logger
+        self.logger = Logger(log_dir) if logger is None else logger
 
         #TODO: estimate actual needed memory to prevent OOM error.
         self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step) if buffer is None else buffer
@@ -42,6 +43,8 @@ class MDDPGTrainer:
         hard_update(self.critic_target, self.critic)
         
         self.choose_device()
+        
+        self.start_step = 1
 
     def train(self):
         # get initial observation
@@ -51,7 +54,7 @@ class MDDPGTrainer:
         episode, episode_step = 0, 0
         time_stamp = time.time()
 
-        for step in range(1, self.opt.train_steps+1):
+        for step in range(self.start_step, self.opt.train_steps+1):
             # select a action
             action, hidden = self.run_policy(self.env.get_policy_ob(ob), hidden)
             
@@ -212,6 +215,8 @@ class MDDPGTrainer:
         return batch
 
     def save_model(self, path, step=None):
+        path = os.path.join(path, 'ckpt')
+        os.makedirs(path, exist_ok=True)
         if self.data_parallel:
             self.actor = self.actor.module
             self.critic = self.critic.module
@@ -235,6 +240,7 @@ class MDDPGTrainer:
             self.actor.load_state_dict(torch.load('{}/actor.pkl'.format(path)))
             self.critic.load_state_dict(torch.load('{}/critic.pkl'.format(path)))
         else:
+            self.start_step = step
             self.actor.load_state_dict(torch.load('{}/actor_{:07d}.pkl'.format(path, step)))
             self.critic.load_state_dict(torch.load('{}/critic_{:07d}.pkl'.format(path, step)))
 

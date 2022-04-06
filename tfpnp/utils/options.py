@@ -19,12 +19,11 @@ class Options:
         self.parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
         self.parser.add_argument('--max_episode_step', default=6, type=int, help='max length for episode')                
         self.parser.add_argument('--train_steps', default=15000, type=int, help='number of train iters')
-        self.parser.add_argument('--validate_interval', default=50, type=int, help='how many episodes to perform a validation')
+        self.parser.add_argument('--validate_interval', default=1, type=int, help='how many episodes to perform a validation')
         self.parser.add_argument('--save_freq', default=1000, type=int, help='number of steps per epoch')        
         self.parser.add_argument('--episode_train_times', default=10, type=int, help='train times for each episode')    
         self.parser.add_argument('--resume', '-r', default=None, type=str, help='Resuming model path')
         self.parser.add_argument('--resume_step', '-rs', default=None, type=int, help='Resuming model step')
-        self.parser.add_argument('--output', default='./checkpoints', type=str, help='resuming model path for testing')
         self.parser.add_argument('--eval', action='store_true', help='eval mode')
         self.parser.add_argument('--seed', default=1234, type=int, help='random seed')
         self.parser.add_argument('--num_workers', default=8, type=int, help='number of workers on dataloader')        
@@ -42,7 +41,7 @@ class Options:
             self.initialize()
 
         opt = self.parser.parse_args()
-        opt.output = get_output_folder(opt.output, opt.exp)
+        opt.output = get_output_folder('log', opt.exp)
         print('[i] Exp dir: {}'.format(opt.output))
 
         np.random.seed(opt.seed)

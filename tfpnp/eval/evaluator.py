@@ -8,18 +8,19 @@ import numpy as np
 from ..utils.visualize import save_img, seq_plot
 from ..utils.metric import psnr_qrnn3d
 from ..utils.misc import MetricTracker, prRed
+from ..utils.log import COLOR, Logger
 from ..env.base import PnPEnv
 
 
 class Evaluator(object):
-    def __init__(self, opt, env: PnPEnv, val_loaders, writer, device, savedir=None, metric=psnr_qrnn3d):
+    def __init__(self, opt, env: PnPEnv, val_loaders, device, savedir=None, metric=psnr_qrnn3d):
         self.opt = opt
         self.env = env
         self.val_loaders = val_loaders
-        self.writer = writer
         self.device = device
         self.savedir = savedir
         self.metric = metric
+        self.logger = Logger(savedir)
 
     @torch.no_grad()
     def eval(self, policy, step):
@@ -58,7 +59,7 @@ class Evaluator(object):
                     # save_img(output_init, join(base_dir, 'output_init.png'))
                     save_img(output, join(base_dir, f'output_{psnr_finished: .2f}.png'))
                     save_img(gt, join(base_dir, 'gt.png'))
-                    
+
                     params = {}
                     for k, v in action_seqs.items():
                         seq_plot(v, 'step', k, save_path=join(base_dir, k+'.png'))
@@ -66,20 +67,20 @@ class Evaluator(object):
                         # print(v)
                     import json
                     json.dump(params, open(join(base_dir, 'action_seqs.json'), 'w'))
-                    
+
                     seq_plot(psnr_seq, 'step', 'psnr',
                              save_path=join(base_dir, 'psnr.png'))
                     seq_plot(reward_seq, 'step', 'reward',
                              save_path=join(base_dir, 'reward.png'))
 
-            prRed('Step_{:07d}: {} | {}'.format(step - 1, name, metric_tracker))
+            self.logger.log('Step_{:07d}: {} | {}'.format(step - 1, name, metric_tracker), color=COLOR.RED)
 
 
 def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     observation = env.reset(data=data)
-    hidden = policy.init_state(observation.shape[0])  #TODO: add RNN support
-    _, output_init, gt = env.get_images(observation)    
-    
+    hidden = policy.init_state(observation.shape[0])  # TODO: add RNN support
+    _, output_init, gt = env.get_images(observation)
+
     psnr_init = metric(output_init[0], gt[0])
 
     episode_steps = 0
@@ -93,7 +94,7 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     time_stamp = time.time()
     while episode_steps < max_episode_step:
         action, _, _, hidden = policy(env.get_policy_ob(ob), idx_stop=None, train=False, hidden=hidden)
-                
+
         # since batch size = 1, ob and ob_masked are always identicial
         ob, _, reward, done, _ = env.step(action)
 
@@ -109,14 +110,14 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
         reward_seq.append(reward.item())
 
         action.pop('idx_stop')
-        for k, v in action.items():            
+        for k, v in action.items():
             if k not in action_seqs.keys():
                 action_seqs[k] = []
             for i in range(v.shape[0]):
                 action_seqs[k] += list(v[i].detach().cpu().numpy())
         if done:
             break
-        
+
     run_time = time.time() - time_stamp
     input, output, gt = env.get_images(ob)
     psnr_finished = metric(output[0], gt[0])

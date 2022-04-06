@@ -21,6 +21,7 @@ def xprint(*args, color=COLOR.DEFAULT, **kwargs):
 
 class Logger:
     def __init__(self, log_dir=None):
+        os.makedirs(log_dir, exist_ok=True)
         self.log_path = os.path.join(log_dir, 'log.txt') if log_dir else None
         if self.log_path is not None:
             self.log_file = open(self.log_path, 'a')
@@ -29,12 +30,9 @@ class Logger:
         xprint(*args, color=color)
 
         if self.log_path is not None:
-            content = ' '.join(list(map(str, args)))
-            self.log_file.write(content)
-
-    def __del__(self):
-        if self.log_path is not None:
-            self.log_file.close()
+            with open(self.log_path, 'a') as f:
+                content = ' '.join(list(map(str, args))) + '\n'
+                f.write(content)
 
 
 if __name__ == '__main__':
