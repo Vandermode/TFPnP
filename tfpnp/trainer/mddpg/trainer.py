@@ -15,11 +15,12 @@ from ...policy.sync_batchnorm import DataParallelWithCallback
 
 DataParallel = DataParallelWithCallback
 
+
 class MDDPGTrainer:
-    def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler, 
-                 device, log_dir, evaluator:Evaluator=None, 
-                 enable_tensorboard=False, logger=None, buffer=None):        
-        
+    def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler,
+                 device, log_dir, evaluator: Evaluator = None,
+                 enable_tensorboard=False, logger=None, buffer=None):
+
         self.data_parallel = True if torch.cuda.device_count() > 1 else False
         self.opt = opt
         self.env = env
@@ -32,7 +33,7 @@ class MDDPGTrainer:
         self.device = device
         self.logger = Logger(log_dir) if logger is None else logger
 
-        #TODO: estimate actual needed memory to prevent OOM error.
+        # TODO: estimate actual needed memory to prevent OOM error.
         self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step) if buffer is None else buffer
 
         self.optimizer_actor = Adam(self.actor.parameters())
@@ -41,25 +42,27 @@ class MDDPGTrainer:
         self.criterion = nn.MSELoss()   # criterion for value loss
 
         hard_update(self.critic_target, self.critic)
-        
+
         self.choose_device()
-        
+
         self.start_step = 1
 
     def train(self):
         # get initial observation
         ob = self.env.reset()
 
-        hidden = hidden_full = self.actor.init_state(ob.shape[0]).to(self.device)  #TODO: add RNN support
+        hidden = hidden_full = self.actor.init_state(ob.shape[0]).to(self.device)  # TODO: add RNN support
         episode, episode_step = 0, 0
         time_stamp = time.time()
 
+        best_eval_psnr = 0
+        
         for step in range(self.start_step, self.opt.train_steps+1):
             # select a action
             action, hidden = self.run_policy(self.env.get_policy_ob(ob), hidden)
-            
+
             # step the env
-            _, ob2_masked, _, done, _ = self.env.step(action)            
+            _, ob2_masked, _, done, _ = self.env.step(action)
             episode_step += 1
 
             # store experience to replay buffer: in a2cddpg, we only need ob actually
@@ -70,11 +73,15 @@ class MDDPGTrainer:
 
             # end of trajectory handling
             if done or (episode_step == self.opt.max_episode_step):
-                
+
                 if step > self.opt.warmup:
                     if self.evaluator is not None and (episode+1) % self.opt.validate_interval == 0:
-                        self.evaluator.eval(self.actor, step)
+                        eval_psnr = self.evaluator.eval(self.actor, step)
+                        if eval_psnr > best_eval_psnr:
+                            best_eval_psnr = eval_psnr
+                            self.save_model(self.opt.output, 'best_{:.2f}'.format(best_eval_psnr))
                         self.save_model(self.opt.output)
+                        
 
                 train_time_interval = time.time() - time_stamp
                 time_stamp = time.time()
@@ -111,23 +118,30 @@ class MDDPGTrainer:
         self.actor.train()
 
         tot_Q, tot_value_loss, tot_dist_entropy = 0, 0, 0
+        tot_actor_norm, tot_critic_norm = 0, 0
         lr = self.lr_scheduler(step)
 
         for _ in range(episode_train_times):
             samples = self.buffer.sample_batch(env_batch)
-            Q, value_loss, dist_entropy = self._update(samples=samples, lr=lr)
+            Q, value_loss, dist_entropy, actor_norm, critic_norm = self._update(samples=samples, lr=lr)
 
             tot_Q += Q
             tot_value_loss += value_loss
             tot_dist_entropy += dist_entropy
+            tot_actor_norm += actor_norm
+            tot_critic_norm += critic_norm
 
         mean_Q = tot_Q / episode_train_times
         mean_dist_entropy = tot_dist_entropy / episode_train_times
         mean_value_loss = tot_value_loss / episode_train_times
+        mean_actor_norm = tot_actor_norm / episode_train_times
+        mean_critic_norm = tot_critic_norm / episode_train_times
 
         tensorboard_result = {'critic_lr': lr['critic'], 'actor_lr': lr['actor'],
-                              'Q': mean_Q, 'dist_entropy': mean_dist_entropy, 'critic_loss': mean_value_loss}
-        result = {'Q': mean_Q, 'dist_entropy': mean_dist_entropy, 'critic_loss': mean_value_loss}
+                              'Q': mean_Q, 'dist_entropy': mean_dist_entropy, 'critic_loss': mean_value_loss,
+                              'actor_norm': mean_actor_norm, 'critic_norm': mean_critic_norm}
+        result = {'Q': mean_Q, 'dist_entropy': mean_dist_entropy, 'closs': mean_value_loss,
+                   'anorm': mean_actor_norm, 'cnorm': mean_critic_norm}
 
         return result, tensorboard_result
 
@@ -176,16 +190,18 @@ class MDDPGTrainer:
         # perform one step gradient descent
         self.actor.zero_grad()
         policy_loss.backward(retain_graph=True)
+        actor_norm = nn.utils.clip_grad_norm_(self.actor.parameters(), 1e3)
         self.optimizer_actor.step()
 
         self.critic.zero_grad()
         value_loss.backward(retain_graph=True)
+        critic_norm = nn.utils.clip_grad_norm_(self.critic.parameters(), 1e3)
         self.optimizer_critic.step()
 
         # soft update target network
         soft_update(self.critic_target, self.critic, self.opt.tau)
 
-        return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item()
+        return -policy_loss.item(), value_loss.item(), entroy_regularization.mean().item(), actor_norm.item(), critic_norm.item()
 
     def run_policy(self, ob, hidden=None):
         self.actor.eval()
@@ -202,7 +218,7 @@ class MDDPGTrainer:
 
         hidden = hidden.clone().detach().cpu()
         ob['hidden'] = hidden
-        
+
         B = ob.shape[0]
         for i in range(B):
             self.buffer.store(ob[i])
@@ -220,19 +236,20 @@ class MDDPGTrainer:
         if self.data_parallel:
             self.actor = self.actor.module
             self.critic = self.critic.module
-            self.critic_target = self.critic_target.module      
+            self.critic_target = self.critic_target.module
 
         self.actor.cpu()
-        self.critic.cpu()                    
+        self.critic.cpu()
         if step is None:
             torch.save(self.actor.state_dict(), '{}/actor.pkl'.format(path))
             torch.save(self.critic.state_dict(), '{}/critic.pkl'.format(path))
         else:
+            postfix = step if isinstance(step, str) else '{:07d}'.format(step)
             torch.save(self.actor.state_dict(),
-                       '{}/actor_{:07d}.pkl'.format(path, step))
+                       '{}/actor_{}.pkl'.format(path, postfix))
             torch.save(self.critic.state_dict(),
-                       '{}/critic_{:07d}.pkl'.format(path, step))
-        
+                       '{}/critic_{}.pkl'.format(path, postfix))
+
         self.choose_device()
 
     def load_model(self, path, step=None):

@@ -25,6 +25,7 @@ class Evaluator(object):
     @torch.no_grad()
     def eval(self, policy, step):
         policy.eval()
+        total_metric = 0
         for name, val_loader in self.val_loaders.items():
             metric_tracker = MetricTracker()
             for index, data in enumerate(val_loader):
@@ -72,9 +73,9 @@ class Evaluator(object):
                              save_path=join(base_dir, 'psnr.png'))
                     seq_plot(reward_seq, 'step', 'reward',
                              save_path=join(base_dir, 'reward.png'))
-
+            total_metric += metric_tracker['psnr']
             self.logger.log('Step_{:07d}: {} | {}'.format(step - 1, name, metric_tracker), color=COLOR.RED)
-
+        return total_metric / len(self.val_loaders)
 
 def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     observation = env.reset(data=data)
