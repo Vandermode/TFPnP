@@ -85,7 +85,7 @@ def main(opt):
     critic = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
     critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
 
-    trainer = MDDPGTrainer(opt, env, actor=actor,
+    trainer = MDDPGTrainer(opt, env, policy=actor,
                            critic=critic, critic_target=critic_target,
                            lr_scheduler=lr_scheduler, device=device,
                            evaluator=evaluator, writer=writer)

@@ -8,8 +8,8 @@ from tfpnp.utils.transforms import complex2channel, complex2real
 class CSMRIEnv(PnPEnv):
     # class attribute: the dimension of ob (exclude solver variable)
     ob_base_dim = 6  
-    def __init__(self, data_loader, solver, max_episode_step, device):
-        super().__init__(data_loader, solver, max_episode_step, device)
+    def __init__(self, data_loader, solver, max_episode_step):
+        super().__init__(data_loader, solver, max_episode_step)
     
     def get_policy_ob(self, ob):
         return torch.cat([

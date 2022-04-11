@@ -12,21 +12,30 @@ from ...utils.misc import DataParallel, soft_update, hard_update
 from ...utils.rpm import ReplayMemory
 from ...utils.log import Logger, COLOR
 from ...policy.sync_batchnorm import DataParallelWithCallback
+from .critic import ResNet_wobn
 
 DataParallel = DataParallelWithCallback
 
 
 class MDDPGTrainer:
-    def __init__(self, opt, env: PnPEnv, actor, critic, critic_target, lr_scheduler,
-                 device, log_dir, evaluator: Evaluator = None,
-                 enable_tensorboard=False, logger=None, buffer=None):
+    def __init__(self, 
+                 opt, 
+                 env: PnPEnv, 
+                 policy, 
+                 lr_scheduler,
+                 device, 
+                 log_dir, 
+                 evaluator: Evaluator = None,
+                 enable_tensorboard=False, 
+                 logger=None
+                 ):
 
         self.data_parallel = True if torch.cuda.device_count() > 1 else False
         self.opt = opt
         self.env = env
-        self.actor = actor
-        self.critic = critic
-        self.critic_target = critic_target
+        self.actor = policy
+        self.critic = ResNet_wobn(policy.in_dim, 18, 1).to(device)
+        self.critic_target = ResNet_wobn(policy.in_dim, 18, 1).to(device)
         self.lr_scheduler = lr_scheduler
         self.evaluator = evaluator
         self.writer = SummaryWriter(os.path.join(log_dir, 'tfborad')) if enable_tensorboard else None
@@ -34,7 +43,7 @@ class MDDPGTrainer:
         self.logger = Logger(log_dir) if logger is None else logger
 
         # TODO: estimate actual needed memory to prevent OOM error.
-        self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step) if buffer is None else buffer
+        self.buffer = ReplayMemory(opt.rmsize * opt.max_episode_step)
 
         self.optimizer_actor = Adam(self.actor.parameters())
         self.optimizer_critic = Adam(self.critic.parameters())
@@ -80,6 +89,7 @@ class MDDPGTrainer:
                         if eval_psnr > best_eval_psnr:
                             best_eval_psnr = eval_psnr
                             self.save_model(self.opt.output, 'best_{:.2f}'.format(best_eval_psnr))
+                            self.save_model(self.opt.output, 'best')
                         self.save_model(self.opt.output)
                         
 

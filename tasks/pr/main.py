@@ -37,8 +37,6 @@ def main(opt):
     #                                     Valid                                    #
     # ---------------------------------------------------------------------------- #
 
-    writer = SummaryWriter(log_dir)
-
     alphas = [9, 27, 81]
     noise_model = PoissonModel(alphas)
 
@@ -57,8 +55,8 @@ def main(opt):
     if torch.cuda.device_count() > 1:
         solver = DataParallelWithCallback(solver)
 
-    eval_env = PREnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
-    evaluator = Evaluator(opt, eval_env, val_loaders, writer, device, savedir='results')
+    eval_env = PREnv(None, solver, max_episode_step=opt.max_episode_step).to(device)
+    evaluator = Evaluator(opt, eval_env, val_loaders, savedir=log_dir / 'results')
 
     if opt.eval:
         actor_ckpt = torch.load(opt.resume)
@@ -75,7 +73,7 @@ def main(opt):
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.env_batch, shuffle=True,
                                                num_workers=opt.num_workers, pin_memory=True, drop_last=True)
 
-    env = PREnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
+    env = PREnv(train_loader, solver, max_episode_step=opt.max_episode_step).to(device)
 
     def lr_scheduler(step):
         if step < 10000:
@@ -86,10 +84,11 @@ def main(opt):
     critic = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
     critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
 
-    trainer = MDDPGTrainer(opt, env, actor=actor,
+    trainer = MDDPGTrainer(opt, env, policy=actor,
+                           log_dir=log_dir,
                            critic=critic, critic_target=critic_target,
                            lr_scheduler=lr_scheduler, device=device,
-                           evaluator=evaluator, writer=writer)
+                           evaluator=evaluator)
     trainer.train()
 
 

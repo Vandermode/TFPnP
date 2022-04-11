@@ -128,3 +128,14 @@ def get_output_folder(parent_dir, env_name):
     # parent_dir = parent_dir + '-run{}'.format(experiment_id)
     os.makedirs(parent_dir, exist_ok=True)
     return parent_dir
+
+
+def apply_recursive(func, obj):
+    if isinstance(obj, dict):  # if dict, apply to each key
+        return {k: apply_recursive(func, v) for k, v in obj.items()}
+    elif isinstance(obj, list):  # if list, apply to each element
+        return [apply_recursive(func, elem) for elem in obj]
+    elif isinstance(obj, tuple):  # if list, apply to each element
+        return (apply_recursive(func, elem) for elem in obj)
+    else:
+        return func(obj)

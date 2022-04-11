@@ -2,10 +2,10 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data.dataloader import DataLoader
 
-from ..data.util import dict_to_device
-from ..utils.misc import torch2img255
+from ..utils.misc import torch2img255, apply_recursive
 from ..pnp import PnPSolver
 from ..data.batch import Batch
+
 
 class Env:
     def reset(self):
@@ -42,11 +42,11 @@ class DifferentiableEnv(Env):
 
 
 class PnPEnv(DifferentiableEnv):
-    def __init__(self, data_loader: DataLoader, solver: PnPSolver, max_episode_step, device, data_transform=None):
+    def __init__(self, data_loader: DataLoader, solver: PnPSolver, max_episode_step, data_transform=None):
         super(PnPEnv, self).__init__()
         self.data_loader = data_loader
         self.data_iterator = iter(data_loader) if data_loader is not None else None
-        self.device = device
+        self.device = torch.device('cpu')
         self.data_transform = data_transform
 
         self.solver = solver
@@ -60,38 +60,38 @@ class PnPEnv(DifferentiableEnv):
 
     ################################################################################
     #   Abstract methods
-    # 
-    #   You need to implement all the following methods in your environment to 
+    #
+    #   You need to implement all the following methods in your environment to
     #   make it compatible with MDDPGTrainer.
     #################################################################################
 
-    def get_policy_ob(self, ob:Batch):
+    def get_policy_ob(self, ob: Batch):
         """ Extract the input for policy network from the observation.
 
             Args:
                 ob (Batch): the observation.
-            
+
             Returns:
                 A torch tensor for policy network.
         """
         raise NotImplementedError
 
-    def get_eval_ob(self, ob:Batch):
+    def get_eval_ob(self, ob: Batch):
         """ Extract the input for critic network from the observation.
 
             Args:
                 ob (Batch): the observation.
-            
+
             Returns:
                 A torch tensor for evalutaion network, such as critic in A2C.
         """
         raise NotImplementedError
 
-    def _get_attribute(self, ob:Batch, key:str):
-        
+    def _get_attribute(self, ob: Batch, key: str):
+
         raise NotImplementedError
 
-    def _build_next_ob(self, ob:Batch, solver_state):
+    def _build_next_ob(self, ob: Batch, solver_state):
         """ Build next observation from current observatio and solver state.
 
         Args:
@@ -106,16 +106,16 @@ class PnPEnv(DifferentiableEnv):
     def _observation(self):
         """ Construct the observation from the internal state of the env, which can
             be accessed by `self.state`.
-            
+
             Returns:
                 A Batch contains the observation. Make sure each element's first dim is Batch size.
         """
         raise NotImplementedError
 
     #################################################################################
-    #   Basic APIs 
-    # 
-    #   Do not modify the following methods unless you understand what you are doing. 
+    #   Basic APIs
+    #
+    #   Do not modify the following methods unless you understand what you are doing.
     #################################################################################
 
     def reset(self, data=None):
@@ -132,24 +132,26 @@ class PnPEnv(DifferentiableEnv):
         # move data to device
         if self.data_transform is not None:
             data = self.data_transform(data)
-            
-        data = dict_to_device(data, self.device)
+
+        def to_device(x):
+            if isinstance(x, torch.Tensor): return x.to(self.device)
+        data = apply_recursive(to_device, data)
 
         # get inital solver states
         solver_state = self.solver.reset(data)
         data.update({'solver': solver_state})
 
         # construct state of time step
-        B, _, W, H = data['gt'].shape        
+        B, _, W, H = data['gt'].shape
         # sigma_n = torch.ones_like(data['gt']) * data['sigma_n'].view(B, 1, 1, 1)
         T = torch.ones([B, 1, W, H], dtype=torch.float32,
                        device=self.device) * self.cur_step / self.max_episode_step
         data.update({'T': T})
-        
+
         self.state = data
         self.idx_left = torch.arange(0, B).to(self.device)
         self.last_metric = self._compute_metric()
-        
+
         return self._observation()
 
     def step(self, action):
@@ -158,9 +160,9 @@ class PnPEnv(DifferentiableEnv):
         # perform one step using solver and update state
         with torch.no_grad():
             def f(x): return x[self.idx_left, ...]
-            inputs = (f(self.state['solver']), 
-                    #   f(self.solver.filter_aux_inputs(self.state))
-                      list(map(f, self.solver.filter_aux_inputs(self.state)))
+            inputs = (f(self.state['solver']),
+                      #   f(self.solver.filter_aux_inputs(self.state))
+                      apply_recursive(f, self.solver.filter_aux_inputs(self.state))
                       )
             parameters = self.solver.filter_hyperparameter(action)
             solver_state = self.solver(inputs, parameters)
@@ -198,6 +200,7 @@ class PnPEnv(DifferentiableEnv):
         output2 = self.solver.get_output(solver_state)
 
         # compute reward
+        # print(gt.shape, output.shape, output2.shape)
         reward = self.metric_fn(output2, gt) - self.metric_fn(output, gt)
 
         return self._build_next_ob(ob, solver_state), reward
@@ -208,6 +211,12 @@ class PnPEnv(DifferentiableEnv):
         gt = pre_process(self._get_attribute(ob, 'gt'))
 
         return input, output, gt
+
+    def to(self, device):
+        if not isinstance(device, torch.device):
+            raise TypeError('device must be torch.device, but got {}'.format(type(device)))
+        self.device = device
+        return self
 
     ###################################################
     #   Private utils

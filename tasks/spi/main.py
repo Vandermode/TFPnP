@@ -36,7 +36,6 @@ def main(opt):
     # ---------------------------------------------------------------------------- #
     #                                     Valid                                    #
     # ---------------------------------------------------------------------------- #
-    writer = SummaryWriter(log_dir)
     
     val_roots = [data_dir / 'spi' / 'SPISet13_2020' / f'x{K}' for K in Ks]
     val_datasets = [SPIEvalDataset(val_root, fns=None) for val_root in val_roots]
@@ -49,8 +48,8 @@ def main(opt):
     if torch.cuda.device_count() > 1:
         solver = DataParallelWithCallback(solver)
 
-    eval_env = SPIEnv(None, solver, max_episode_step=opt.max_episode_step, device=device)
-    evaluator = Evaluator(opt, eval_env, val_loaders, writer, device, savedir='results')
+    eval_env = SPIEnv(None, solver, max_episode_step=opt.max_episode_step).to(device)
+    evaluator = Evaluator(opt, eval_env, val_loaders, savedir='results')
     
     if opt.eval:
         actor_ckpt = torch.load(opt.resume)
@@ -73,7 +72,7 @@ def main(opt):
         train_dataset, batch_size=opt.env_batch, shuffle=True,
         num_workers=opt.num_workers, pin_memory=True, drop_last=True)
 
-    env = SPIEnv(train_loader, solver, max_episode_step=opt.max_episode_step, device=device)
+    env = SPIEnv(train_loader, solver, max_episode_step=opt.max_episode_step).to(device)
 
     def lr_scheduler(step):
         if step < 10000:
@@ -84,10 +83,11 @@ def main(opt):
     critic = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
     critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
 
-    trainer = MDDPGTrainer(opt, env, actor=actor,
+    trainer = MDDPGTrainer(opt, env, policy=actor,
+                           log_dir=log_dir,
                            critic=critic, critic_target=critic_target,
                            lr_scheduler=lr_scheduler, device=device,
-                           evaluator=evaluator, writer=writer)
+                           evaluator=evaluator)
     trainer.train()
 
 

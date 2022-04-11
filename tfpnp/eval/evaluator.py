@@ -3,21 +3,17 @@ import time
 import torch
 from os.path import join
 
-import numpy as np
-
 from ..utils.visualize import save_img, seq_plot
 from ..utils.metric import psnr_qrnn3d
-from ..utils.misc import MetricTracker, prRed
+from ..utils.misc import MetricTracker
 from ..utils.log import COLOR, Logger
 from ..env.base import PnPEnv
 
 
 class Evaluator(object):
-    def __init__(self, opt, env: PnPEnv, val_loaders, device, savedir=None, metric=psnr_qrnn3d):
-        self.opt = opt
+    def __init__(self, env: PnPEnv, val_loaders, savedir=None, metric=psnr_qrnn3d):
         self.env = env
         self.val_loaders = val_loaders
-        self.device = device
         self.savedir = savedir
         self.metric = metric
         self.logger = Logger(savedir)
@@ -40,15 +36,14 @@ class Evaluator(object):
 
                 # run
                 psnr_init, psnr_finished, info, imgs = eval_single(self.env, data, policy,
-                                                                   max_episode_step=self.opt.max_episode_step,
-                                                                   loop_penalty=self.opt.loop_penalty,
+                                                                   max_episode_step=self.env.max_episode_step,
                                                                    metric=self.metric)
 
-                episode_steps, episode_reward, psnr_seq, reward_seq, action_seqs, run_time = info
+                episode_steps, psnr_seq, action_seqs, run_time = info
                 input, output_init, output, gt = imgs
 
                 # save metric
-                metric_tracker.update({'iters': episode_steps, 'acc_reward': episode_reward,
+                metric_tracker.update({'iters': episode_steps,
                                        'psnr_init': psnr_init, 'psnr': psnr_finished, 'time': run_time})
 
                 # save imgs
@@ -63,21 +58,21 @@ class Evaluator(object):
 
                     params = {}
                     for k, v in action_seqs.items():
-                        seq_plot(v, 'step', k, save_path=join(base_dir, k+'.png'))
-                        params[k] = [float(x) for x in v]
-                        # print(v)
+                        seq_plot(v, 'step', k, save_path=join(base_dir, str(k)+'.png'))
+                        params[str(k)] = [float(x) for x in v]
+                    
                     import json
                     json.dump(params, open(join(base_dir, 'action_seqs.json'), 'w'))
 
                     seq_plot(psnr_seq, 'step', 'psnr',
                              save_path=join(base_dir, 'psnr.png'))
-                    seq_plot(reward_seq, 'step', 'reward',
-                             save_path=join(base_dir, 'reward.png'))
+
             total_metric += metric_tracker['psnr']
             self.logger.log('Step_{:07d}: {} | {}'.format(step - 1, name, metric_tracker), color=COLOR.RED)
         return total_metric / len(self.val_loaders)
 
-def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
+
+def eval_single(env, data, policy, max_episode_step, metric):
     observation = env.reset(data=data)
     hidden = policy.init_state(observation.shape[0])  # TODO: add RNN support
     _, output_init, gt = env.get_images(observation)
@@ -85,10 +80,8 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     psnr_init = metric(output_init[0], gt[0])
 
     episode_steps = 0
-    episode_reward = np.zeros(1)
 
     psnr_seq = [psnr_init]
-    reward_seq = [0]
     action_seqs = {}
 
     ob = observation
@@ -97,18 +90,13 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
         action, _, _, hidden = policy(env.get_policy_ob(ob), idx_stop=None, train=False, hidden=hidden)
 
         # since batch size = 1, ob and ob_masked are always identicial
-        ob, _, reward, done, _ = env.step(action)
+        ob, _, _, done, _ = env.step(action)
 
-        if not done:
-            reward = reward - loop_penalty
-
-        episode_reward += reward.item()
         episode_steps += 1
 
         _, output, gt = env.get_images(ob)
         cur_psnr = metric(output[0], gt[0])
         psnr_seq.append(cur_psnr.item())
-        reward_seq.append(reward.item())
 
         action.pop('idx_stop')
         for k, v in action.items():
@@ -123,7 +111,7 @@ def eval_single(env, data, policy, max_episode_step, loop_penalty, metric):
     input, output, gt = env.get_images(ob)
     psnr_finished = metric(output[0], gt[0])
 
-    info = (episode_steps, episode_reward, psnr_seq, reward_seq, action_seqs, run_time)
+    info = (episode_steps, psnr_seq, action_seqs, run_time)
     imgs = (input[0], output_init[0], output[0], gt[0])
 
     return psnr_init, psnr_finished, info, imgs

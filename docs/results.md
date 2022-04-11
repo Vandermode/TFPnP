@@ -53,3 +53,21 @@
  Step_0014999: alpha_27 | acc_reward: 30.30 | iters: 2.25 | psnr: 34.06 | psnr_init: 3.69 | 
  Step_0014999: alpha_81 | acc_reward: 24.56 | iters: 2.00 | psnr: 28.31 | psnr_init: 3.69 | 
 ```
+
+## CT
+
+```shell
+
+```
+
+## SPI
+
+```shell
+(torch) ➜  spi git:(master) ✗ python -W ignore main.py --eval --solver admm_spi --exp spi_admm_1x10_48 -r checkpoints/spi_admm_1x10_48/actor_0015000.pkl -rs 15000 --max_episode_step 10 --action_pack 1
+[i] Exp dir: log/spi_admm_1x10_48
+[i] use denoiser: unet
+[i] use solver: admm_spi
+Step_0014999: spi_x4 | acc_reward: 9.58 | iters: 9.77 | psnr: 25.55 | psnr_init: 15.54 | time: 0.17 | 
+Step_0014999: spi_x6 | acc_reward: 11.21 | iters: 7.23 | psnr: 28.47 | psnr_init: 16.95 | time: 0.10 | 
+Step_0014999: spi_x8 | acc_reward: 12.57 | iters: 4.23 | psnr: 30.32 | psnr_init: 17.58 | time: 0.06 | 
+```

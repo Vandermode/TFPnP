@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
+
+from .base import PolicyNetwork
 from .sync_batchnorm import SynchronizedBatchNorm2d
 
 # norm = nn.BatchNorm2d
@@ -114,9 +116,9 @@ class ResNetEncoder(nn.Module):
         return x
 
 
-class ResNetActorBase(nn.Module):
+class ResNetActorBase(PolicyNetwork):
     def __init__(self, num_inputs, action_bundle, num_actions):
-        super().__init__()
+        super().__init__(num_inputs)
         self.num_actions = num_actions
         self.action_range = None
 
@@ -164,8 +166,7 @@ class ResNetActorBase(nn.Module):
         
         chunk_size = int(action_deterministic.shape[1] // num_actions)
         action_values = torch.split(action_deterministic, chunk_size, dim=1)
-        action = {}
-
+        action = OrderedDict()
         for i, key in enumerate(action_range):
             action[key] = action_values[i] * action_range[key]['scale'] \
                 + action_range[key]['shift']
