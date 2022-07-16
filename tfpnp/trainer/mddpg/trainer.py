@@ -200,12 +200,12 @@ class MDDPGTrainer:
         # perform one step gradient descent
         self.actor.zero_grad()
         policy_loss.backward(retain_graph=True)
-        actor_norm = nn.utils.clip_grad_norm_(self.actor.parameters(), 1e3)
+        actor_norm = nn.utils.clip_grad_norm_(self.actor.parameters(), 50)
         self.optimizer_actor.step()
 
         self.critic.zero_grad()
         value_loss.backward(retain_graph=True)
-        critic_norm = nn.utils.clip_grad_norm_(self.critic.parameters(), 1e3)
+        critic_norm = nn.utils.clip_grad_norm_(self.critic.parameters(), 50)
         self.optimizer_critic.step()
 
         # soft update target network

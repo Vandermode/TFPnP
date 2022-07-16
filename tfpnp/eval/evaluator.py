@@ -51,8 +51,8 @@ class Evaluator(object):
                     base_dir = join(self.savedir, name, data_name, str(step))
                     os.makedirs(base_dir, exist_ok=True)
 
-                    # save_img(input, join(base_dir, 'input.png'))
-                    # save_img(output_init, join(base_dir, 'output_init.png'))
+                    save_img(input, join(base_dir, 'input.png'))
+                    save_img(output_init, join(base_dir, 'output_init.png'))
                     save_img(output, join(base_dir, f'output_{psnr_finished: .2f}.png'))
                     save_img(gt, join(base_dir, 'gt.png'))
 

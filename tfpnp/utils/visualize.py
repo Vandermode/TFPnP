@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import PIL.Image as Image
 
 
 def seq_plot(seq, xlabel, ylabel, color='blue', save_path=None):
@@ -25,6 +24,9 @@ def seq_plot(seq, xlabel, ylabel, color='blue', save_path=None):
 def save_img(img, path):
     # img: [C, W, H]
     # c, w, h = img.shape
-    img = np.clip(img[0, ...], 0, 255).astype(np.uint8)
-    
-    Image.fromarray(img).save(path)
+    if img.shape[0] > 3:
+        img = img[0:1, ...]
+    img = np.clip(img, 0, 255).astype(np.uint8)
+    img = img.transpose(1,2,0)
+    import imageio
+    imageio.imwrite(path, img)

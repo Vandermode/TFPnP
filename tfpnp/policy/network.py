@@ -121,7 +121,8 @@ class ResNetActorBase(PolicyNetwork):
         super().__init__(num_inputs)
         self.num_actions = num_actions
         self.action_range = None
-
+        self.action_bundle = action_bundle
+        
         self.actor_encoder = ResNetEncoder(num_inputs, 18)
 
         self.fc_softmax = nn.Sequential(*[
