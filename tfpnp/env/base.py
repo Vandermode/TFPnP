@@ -162,7 +162,7 @@ class PnPEnv(DifferentiableEnv):
             def f(x): return x[self.idx_left, ...]
             inputs = (f(self.state['solver']),
                       #   f(self.solver.filter_aux_inputs(self.state))
-                      apply_recursive(f, self.solver.filter_aux_inputs(self.state))
+                      *apply_recursive(f, self.solver.filter_aux_inputs(self.state))
                       )
             parameters = self.solver.filter_hyperparameter(action)
             solver_state = self.solver(inputs, parameters)
