@@ -32,7 +32,7 @@ class CSMRIEnv(PnPEnv):
         elif key == 'input':
             return ob.ATy0
         elif key == 'solver_input':
-            return (ob.variables, ob.y0, ob.mask.bool())
+            return ob.variables, ob.y0, ob.mask.bool()
         else:
             raise NotImplementedError('key is not supported, ' + str(key))
         

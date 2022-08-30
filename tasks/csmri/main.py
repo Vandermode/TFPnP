@@ -22,11 +22,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 sampling_masks = ['radial_128_2', 'radial_128_4', 'radial_128_8']
 
 
-def evaluator(data_dir, solver, sigma_n, save_dir):
+def build_evaluator(data_dir, solver, sigma_n, save_dir):
     val_loaders = {}
     for sampling_mask in sampling_masks:
         root = data_dir / 'csmri' / 'Medical7_2020' / sampling_mask / str(sigma_n)
-        dataset = CSMRIEvalDataset(root, fns=['Brain'])
+        dataset = CSMRIEvalDataset(root)
         loader = DataLoader(dataset, batch_size=1, shuffle=False)
         val_loaders[f'{sampling_mask}_{sigma_n}'] = loader
 
@@ -46,7 +46,7 @@ def train(opt, data_dir, mask_dir, policy, solver, log_dir):
                               shuffle=True, num_workers=opt.num_workers,
                               pin_memory=True, drop_last=True)
 
-    eval = evaluator(data_dir, solver, '15', log_dir / 'eval_results')
+    eval = build_evaluator(data_dir, solver, '15', log_dir / 'eval_results')
     
     env = CSMRIEnv(train_loader, solver, max_episode_step=opt.max_episode_step).to(device)
 
@@ -84,7 +84,7 @@ def main(opt):
         policy.load_state_dict(ckpt)
         for sigma_n in [5, 10, 15]:
             save_dir = log_dir / 'test_results' / str(sigma_n)
-            e = evaluator(data_dir, solver, sigma_n, save_dir)
+            e = build_evaluator(data_dir, solver, sigma_n, save_dir)
             e.eval(policy, step=opt.resume_step)
             print('--------------------------')
         return 
