@@ -64,8 +64,11 @@ class DataParallelWithCallback(DataParallel):
         try:
             return super().__getattr__(name)
         except AttributeError:
-            return getattr(self.module, name)
-
+            try:
+                return getattr(self.module, name)
+            except:
+                return self.module.__getattr__(name)
+            
     def replicate(self, module, device_ids):
         modules = super(DataParallelWithCallback, self).replicate(module, device_ids)
         execute_replication_callbacks(modules)
