@@ -12,13 +12,15 @@ Kaixuan Wei, Angelica Aviles-Rivero, Jingwei Liang, Ying Fu, Carola-Bibiane Sch√
 - 2021-9-25: Release the initial version. It now includes all sources (code and data) to reproduce our results on the ICML paper. More applications (presented on our journal version) are coming soon. 
 
 
-## Requirement
-
-- Pytorch <= 1.7
-
 ## Getting Started
 
-Clone the repo, and install the `tfpnp` package first.
+### Install 
+
+```shell
+pip install tfpnp
+```
+
+**Editable Installation** : Clone the repo, and install the `tfpnp` package first.
 For developing purpose, you are recommended to install the package with [```-e```](https://stackoverflow.com/questions/42609943/what-is-the-use-case-for-pip-install-e/59667164#59667164?newreg=9c456c4fac1e46049b0174b263f67d0b) option. 
 
 ```shell
@@ -26,6 +28,8 @@ git clone https://github.com/Vandermode/TFPnP.git
 cd TFPnP
 pip install -e .
 ```
+
+
 
 ### Testing
 
@@ -52,6 +56,12 @@ python -W ignore main.py --solver admm --exp csmri_admm_5x6_48_new --validate_in
 cd tasks/pr
 python main.py --solver iadmm --exp pr_admm_5x6_36 --validate_interval 50 --env_batch 36 --rmsize 360 --warmup 20 -lp 0.05 --train_steps 15000 --max_episode_step 6 --action_pack 5 -le 0.2
 ```
+
+## Requirement
+
+- The example tasks requires `PyTorch <= 1.7`.
+- The package `tfpnp` itself can be used for higher version of PyTorch.
+
 
 ## Citation
 

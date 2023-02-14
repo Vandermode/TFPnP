@@ -9,7 +9,9 @@ class UNetDenoiser2D(torch.nn.Module):
         super().__init__()
         if ckpt_path is None:
             ckpt_path = os.path.join(CURRENT_DIR, 'pretrained', 'unet-nm.pt')
-
+            if not os.path.exists(ckpt_path):
+                raise ValueError('Default ckpt not found, you have to provide a ckpt path')
+            
         net = UNet(2, 1)
         net.load_state_dict(torch.load(ckpt_path))
         net.eval()
