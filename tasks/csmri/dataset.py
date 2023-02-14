@@ -86,7 +86,8 @@ class CSMRIEvalDataset(Dataset):
     def __init__(self, datadir, fns=None):
         super(CSMRIEvalDataset, self).__init__()
         self.datadir = datadir
-        self.fns = fns or [im for im in os.listdir(self.datadir) if im.endswith(".mat")]             
+        self.fns = fns or [im for im in os.listdir(self.datadir) if im.endswith(".mat")]        
+        self.fns.sort()     
     
     def __getitem__(self, index):
         fn = self.fns[index]

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
 import torch
-from tensorboardX import SummaryWriter
 from scipy.io import loadmat
 from pathlib import Path
 
@@ -13,7 +12,6 @@ from tfpnp.policy.sync_batchnorm import DataParallelWithCallback
 from tfpnp.policy import create_policy_network
 from tfpnp.pnp import create_denoiser
 from tfpnp.trainer import MDDPGTrainer
-from tfpnp.trainer.mddpg.critic import ResNet_wobn
 from tfpnp.eval import Evaluator
 from tfpnp.utils.noise import PoissonModel
 from tfpnp.utils.options import Options
@@ -31,7 +29,6 @@ def main(opt):
     denoiser = create_denoiser(opt).to(device)
     solver = create_solver_pr(opt, denoiser).to(device)
     actor = create_policy_network(opt, base_dim).to(device)  # policy network
-    num_var = solver.num_var
 
     # ---------------------------------------------------------------------------- #
     #                                     Valid                                    #
@@ -56,18 +53,18 @@ def main(opt):
         solver = DataParallelWithCallback(solver)
 
     eval_env = PREnv(None, solver, max_episode_step=opt.max_episode_step).to(device)
-    evaluator = Evaluator(opt, eval_env, val_loaders, savedir=log_dir / 'results')
 
     if opt.eval:
+        evaluator = Evaluator(eval_env, val_loaders, savedir=log_dir / 'test_results')
         actor_ckpt = torch.load(opt.resume)
         actor.load_state_dict(actor_ckpt)
         evaluator.eval(actor, step=opt.resume_step)
         return
-    
+
     # ---------------------------------------------------------------------------- #
     #                                     Train                                    #
     # ---------------------------------------------------------------------------- #
-    
+
     train_root = data_dir / 'Images_128'
     train_dataset = PRDataset(train_root, fns=None, masks=[obs_mask], noise_model=noise_model)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.env_batch, shuffle=True,
@@ -81,14 +78,16 @@ def main(opt):
         else:
             return {'critic': 5e-5, 'actor': 1e-5}
 
-    critic = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
-    critic_target = ResNet_wobn(base_dim+num_var, 18, 1).to(device)
-
-    trainer = MDDPGTrainer(opt, env, policy=actor,
+    evaluator = Evaluator(eval_env, val_loaders, savedir=log_dir / 'eval_results')
+    trainer = MDDPGTrainer(opt, env, actor,
+                           lr_scheduler=lr_scheduler,
+                           device=device,
                            log_dir=log_dir,
-                           critic=critic, critic_target=critic_target,
-                           lr_scheduler=lr_scheduler, device=device,
-                           evaluator=evaluator)
+                           evaluator=evaluator,
+                           enable_tensorboard=True)
+
+    if opt.resume:
+        trainer.load_model(opt.resume, opt.resume_step)
     trainer.train()
 
 

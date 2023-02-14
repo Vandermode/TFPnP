@@ -12,7 +12,7 @@ class CSMRIEnv(PnPEnv):
         super().__init__(data_loader, solver, max_episode_step)
     
     def get_policy_ob(self, ob):
-        return torch.cat([
+        ob= torch.cat([
             complex2real(ob.variables),
             complex2channel(ob.y0),
             complex2real(ob.ATy0),
@@ -20,6 +20,7 @@ class CSMRIEnv(PnPEnv):
             ob.T,
             complex2real(ob.sigma_n),
         ], 1)
+        return ob
     
     def get_eval_ob(self, ob):
         return self.get_policy_ob(ob)
@@ -32,7 +33,7 @@ class CSMRIEnv(PnPEnv):
         elif key == 'input':
             return ob.ATy0
         elif key == 'solver_input':
-            return ob.variables, ob.y0, ob.mask.bool()
+            return ob.variables, (ob.y0, ob.mask.bool())
         else:
             raise NotImplementedError('key is not supported, ' + str(key))
         

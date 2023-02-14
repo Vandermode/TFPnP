@@ -27,7 +27,6 @@ class GaussianModelD:  # discrete noise levels
             sigma = self.sigmas[idx]
         else:
             sigma = np.random.choice(self.sigmas) # random is important
-
         sigma = sigma / 255.
         y = x + torch.randn(*x.shape) * sigma
               

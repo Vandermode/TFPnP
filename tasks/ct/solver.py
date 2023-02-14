@@ -1,9 +1,8 @@
 import torch
-import numpy as np
 
 from tfpnp.pnp.solver.base import IADMMSolver, PGSolver
-from tfpnp.utils import transforms
 
+from tfpnp.utils.transforms import RadonGenerator
 
 class CTMixin:
     def filter_aux_inputs(self, state):
@@ -13,7 +12,7 @@ class CTMixin:
 class IADMMSolver_CT(CTMixin, IADMMSolver):
     def __init__(self, denoiser):
         super().__init__(denoiser)
-        self.radon_generator = transforms.RadonGenerator()        
+        self.radon_generator = RadonGenerator()        
 
     def forward(self, inputs, parameters, iter_num=None):
         # state: torch.cat([x, z, u], dim=1)
@@ -57,7 +56,7 @@ class IADMMSolver_CT(CTMixin, IADMMSolver):
 class PGSolver_CT(CTMixin, PGSolver):
     def __init__(self, denoiser):
         super().__init__(denoiser)
-        self.radon_generator = transforms.RadonGenerator()
+        self.radon_generator = RadonGenerator()
 
     def forward(self, inputs, parameters, iter_num=None):
         variables, (y0, view) = inputs

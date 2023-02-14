@@ -31,7 +31,7 @@ class ADMMSolver_CSMRI(CSMRIMixin, ADMMSolver):
         # mask:  [B,1,W,H]
         # x,z,u: [B,1,W,H,2]
 
-        variables, y0, mask = inputs
+        variables, (y0, mask) = inputs
         sigma_d, mu = parameters
 
         x, z, u = torch.split(variables, variables.shape[1] // 3, dim=1)

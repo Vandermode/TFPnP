@@ -442,8 +442,7 @@ def spi_inverse(ztilde, K1, K, mu):
 # ---------------------------------------------------------------------------- #
 #                                     CT                                       #
 # ---------------------------------------------------------------------------- #
-enable_CT = False
-if enable_CT:
+try:
     from torch_radon import Radon
     def power_method_opnorm(normal_op, x, n_iter=10):
         def _normalize(x):
@@ -507,7 +506,8 @@ if enable_CT:
                 self.opnorms[key] = opnorm
 
             return radon
-    
+except:
+    pass
 
 if __name__ == '__main__':
     # from scipy.io import loadmat
