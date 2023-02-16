@@ -78,7 +78,7 @@ If you find our work useful for your research, please consider citing the follow
 }
 
 @article{JMLR:v23:20-1297,
-  author  = {Kaixuan Wei and Angelica Aviles-Rivero and Jingwei Liang and Ying Fu and Hua Huang and Carola-Bibiane SchÃ¶nlieb},
+  author  = {Kaixuan Wei and Angelica Aviles-Rivero and Jingwei Liang and Ying Fu and Hua Huang and Carola-Bibiane Sch{\"o}nlieb},
   title   = {TFPnP: Tuning-free Plug-and-Play Proximal Algorithms with Applications to Inverse Imaging Problems},
   journal = {Journal of Machine Learning Research},
   year    = {2022},
