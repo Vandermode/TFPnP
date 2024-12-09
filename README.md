@@ -90,7 +90,7 @@ If you find our work useful for your research, please consider citing the follow
 ```
 
 ## Contact
-If you find any problem, please feel free to contact me (kxwei at princeton.edu ~~kaixuan_wei at bit.edu.cn~~). A brief self-introduction is required, if you would like to get an in-depth help from me.
+If you find any problem, please feel free to contact me (kaixuan.wei at kaust.edu.sa). A brief self-introduction is required, if you would like to get an in-depth help from me.
 
 ## Acknowledgments
 We thank [@Zeqiang-Lai](https://github.com/Zeqiang-Lai) for code clean and refactoring, which makes it well structured and easy to understand. 
